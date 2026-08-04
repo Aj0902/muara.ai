@@ -391,3 +391,184 @@ export async function deleteStore(storeId) {
     return { error: 'Gagal menghapus toko.' };
   }
 }
+
+// 8. SPECIAL ORDERS ACTIONS
+export async function createSpecialOrder(storeId, name, phone, notes) {
+  if (!storeId || !name || !phone || !notes) {
+    return { error: 'Semua kolom wajib diisi!' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('special_orders')
+      .insert({
+        store_id: storeId,
+        customer_name: name,
+        customer_phone: phone,
+        notes: notes,
+        status: 'pending'
+      });
+
+    if (error) throw error;
+    revalidatePath('/admin/pesanan-khusus');
+    return { success: true };
+  } catch (err) {
+    console.error('Create Special Order Error:', err);
+    return { error: 'Gagal membuat pesanan khusus: ' + err.message };
+  }
+}
+
+export async function getSpecialOrders() {
+  const cookieStore = await cookies();
+  const storeId = cookieStore.get('store_session')?.value;
+  if (!storeId) return { error: 'Unauthorized!' };
+
+  try {
+    const { data: orders, error } = await supabase
+      .from('special_orders')
+      .select('*')
+      .eq('store_id', storeId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { success: true, orders };
+  } catch (err) {
+    console.error('Get Special Orders Error:', err);
+    return { error: 'Gagal memuat pesanan khusus.' };
+  }
+}
+
+export async function updateSpecialOrderStatus(orderId, status) {
+  const cookieStore = await cookies();
+  const storeId = cookieStore.get('store_session')?.value;
+  if (!storeId) return { error: 'Unauthorized!' };
+
+  try {
+    const { error } = await supabase
+      .from('special_orders')
+      .update({ status })
+      .eq('id', orderId);
+
+    if (error) throw error;
+    revalidatePath('/admin/pesanan-khusus');
+    return { success: true };
+  } catch (err) {
+    console.error('Update Special Order Status Error:', err);
+    return { error: 'Gagal memperbarui status.' };
+  }
+}
+
+// 9. CLIENT STANDARD ORDERS ACTIONS
+export async function createOrder(storeId, customerName, customerPhone, serviceType, tableNo, notes, totalAmount, items) {
+  if (!storeId || !customerName || !customerPhone || !items || items.length === 0) {
+    return { error: 'Semua kolom wajib diisi!' };
+  }
+
+  try {
+    const invoiceNumber = `INV-${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        store_id: storeId,
+        invoice_number: invoiceNumber,
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        customer_address: serviceType === 'dine_in' ? `Meja ${tableNo}` : 'Take Away',
+        total_amount: totalAmount,
+        status: 'pending',
+        notes: notes
+      })
+      .select()
+      .single();
+
+    if (orderError) throw orderError;
+
+    const orderItems = items.map((item) => ({
+      order_id: order.id,
+      product_id: item.id,
+      product_name: item.name,
+      price: item.price,
+      quantity: item.quantity
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItems);
+
+    if (itemsError) throw itemsError;
+
+    revalidatePath('/admin/pesanan');
+    return { success: true, invoiceNumber };
+  } catch (err) {
+    console.error('Create Order Error:', err);
+    return { error: 'Gagal membuat pesanan: ' + err.message };
+  }
+}
+
+export async function getOrders() {
+  const cookieStore = await cookies();
+  const storeId = cookieStore.get('store_session')?.value;
+  if (!storeId) return { error: 'Unauthorized!' };
+
+  try {
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items (*)
+      `)
+      .eq('store_id', storeId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { success: true, orders };
+  } catch (err) {
+    console.error('Get Orders Error:', err);
+    return { error: 'Gagal memuat daftar pesanan.' };
+  }
+}
+
+export async function updateOrderStatus(orderId, status) {
+  const cookieStore = await cookies();
+  const storeId = cookieStore.get('store_session')?.value;
+  if (!storeId) return { error: 'Unauthorized!' };
+
+  try {
+    const { error } = await supabase
+      .from('orders')
+      .update({ status })
+      .eq('id', orderId);
+
+    if (error) throw error;
+    revalidatePath('/admin/pesanan');
+    return { success: true };
+  } catch (err) {
+    console.error('Update Order Status Error:', err);
+    return { error: 'Gagal memperbarui status pesanan.' };
+  }
+}
+
+export async function getOccupiedTables(storeId) {
+  try {
+    const { data: activeOrders, error } = await supabase
+      .from('orders')
+      .select('customer_address')
+      .eq('store_id', storeId)
+      .in('status', ['pending', 'paid', 'ready']);
+
+    if (error) throw error;
+
+    const occupied = activeOrders
+      .map((ord) => {
+        const match = ord.customer_address.match(/^Meja (\d+)$/);
+        return match ? parseInt(match[1]) : null;
+      })
+      .filter((num) => num !== null);
+
+    return { success: true, occupied };
+  } catch (err) {
+    console.error('Get Occupied Tables Error:', err);
+    return { occupied: [] };
+  }
+}

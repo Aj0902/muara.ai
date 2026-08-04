@@ -78,10 +78,10 @@ export default function AIAssistantForm({ store }) {
         <div className="bg-slate-50 border border-slate-200/60 p-4 rounded-2xl">
           <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mb-2">💡 Tips Menulis Persona Yang Bagus:</p>
           <ul className="text-xs text-slate-500 list-disc list-inside space-y-1 leading-relaxed">
-            <li><strong>Gunakan Dialek Lokal</strong>: *"Gunakan logat Cirebon yang ramah seperti menggunakan kata 'jeh' atau 'mas bro'..."*</li>
-            <li><strong>Tentukan Peran</strong>: *"Anda adalah asisten cerdas yang bertugas memandu konsumen memesan menu di warung kami..."*</li>
-            <li><strong>Fokus Jualan</strong>: *"Jika pembeli bingung mau pesan apa, rekomendasikan menu Balakutak Hideung atau Sate Kentang yang terlaris..."*</li>
-            <li><strong>Ramah & Solutif</strong>: *"Selalu jawab pertanyaan jam buka toko dan arah Google Maps dengan sopan."*</li>
+            <li><strong>Gunakan Dialek Lokal</strong>: *&quot;Gunakan logat Cirebon yang ramah seperti menggunakan kata &apos;jeh&apos; atau &apos;mas bro&apos;...&quot;*</li>
+            <li><strong>Tentukan Peran</strong>: *&quot;Anda adalah asisten cerdas yang bertugas memandu konsumen memesan menu di warung kami...&quot;*</li>
+            <li><strong>Fokus Jualan</strong>: *&quot;Jika pembeli bingung mau pesan apa, rekomendasikan menu Balakutak Hideung atau Sate Kentang yang terlaris...&quot;*</li>
+            <li><strong>Ramah & Solutif</strong>: *&quot;Selalu jawab pertanyaan jam buka toko dan arah Google Maps dengan sopan.&quot;*</li>
           </ul>
         </div>
 

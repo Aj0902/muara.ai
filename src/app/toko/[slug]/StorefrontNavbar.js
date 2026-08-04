@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useStorefrontTheme } from './StorefrontThemeWrapper';
+import { useStorefrontCart } from './StorefrontCartProvider';
 
 export default function StorefrontNavbar({ store }) {
   const pathname = usePathname();
@@ -72,19 +73,35 @@ export default function StorefrontNavbar({ store }) {
             </button>
 
             {/* Keranjang AI Button */}
-            <button
-              onClick={() => alert(`Chatbot AI dengan nama ${store.chatbot_name || 'Asisten'} siap menunggumu di Phase 2!`)}
-              className={`flex items-center gap-2 text-white px-5 py-2.5 rounded-full hover:opacity-90 transition-all shadow-md relative text-xs sm:text-sm font-semibold ${theme.primary}`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
-                <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
-              </svg>
-              <span>Hubungi AI</span>
-            </button>
+            <StorefrontNavbarCartButton store={store} />
           </div>
         </div>
       </div>
     </header>
+  );
+}
+
+function StorefrontNavbarCartButton({ store }) {
+  const { theme } = useStorefrontTheme();
+  const { cartCount, setCartOpen } = useStorefrontCart();
+
+  return (
+    <button
+      onClick={() => setCartOpen(true)}
+      className="flex items-center gap-2 bg-slate-800 dark:bg-slate-100 text-slate-100 dark:text-slate-900 px-5 py-2.5 rounded-full hover:opacity-85 transition-all relative text-xs font-semibold cursor-pointer"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 ${theme.primaryText}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+      <span className="hidden sm:inline">Keranjang AI</span>
+      {cartCount > 0 && (
+        <span className="absolute -top-1 -right-1 flex h-4 w-4">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-500 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-4 w-4 bg-orange-600 text-white text-[9px] font-bold items-center justify-center border border-white dark:border-slate-950">
+            {cartCount}
+          </span>
+        </span>
+      )}
+    </button>
   );
 }

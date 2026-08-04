@@ -13,16 +13,29 @@ export const useStorefrontTheme = () => useContext(ThemeContext);
 export default function StorefrontThemeWrapper({ children, category }) {
   const [darkMode, setDarkMode] = useState(false);
 
-  // Load theme preference from localStorage on mount
+  // Load theme preference dari localStorage setelah component ter-mount
   useEffect(() => {
     const isDark = localStorage.getItem('theme') === 'dark';
-    setDarkMode(isDark);
+    const timer = setTimeout(() => {
+      setDarkMode(isDark);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
     localStorage.setItem('theme', newMode ? 'dark' : 'light');
+    if (newMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   };
 
   // Determine colors based on category

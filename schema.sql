@@ -143,3 +143,53 @@ insert into journals (store_id, title, content, image_url) values
   'Untuk menu Balakutak Hideung, kualitas cumi adalah nomor satu. Setiap subuh, tim kami pergi langsung ke pelabuhan nelayan Kejawanan Cirebon untuk memastikan cumi yang didapatkan benar-benar segar dan tintanya utuh...',
   'https://images.unsplash.com/photo-1596627581971-50e5015383ea?w=800&q=80'
 );
+
+-- =======================================================
+-- PERSIPAN PHASE 2: TRANSAKSI & PELACAKAN (n8n Webhook)
+-- =======================================================
+
+CREATE TABLE orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID REFERENCES stores(id) ON DELETE CASCADE,
+    invoice_number VARCHAR(50) UNIQUE NOT NULL,
+    customer_name VARCHAR(100) NOT NULL,
+    customer_phone VARCHAR(20) NOT NULL,
+    customer_address TEXT,
+    total_amount NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, paid, shipping, completed, canceled
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE order_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+    product_id UUID REFERENCES products(id) ON DELETE SET NULL,
+    product_name VARCHAR(200) NOT NULL,
+    price NUMERIC(12, 2) NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE chat_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID REFERENCES stores(id) ON DELETE CASCADE,
+    session_id UUID NOT NULL, -- Di-generate unik di sisi client per pembeli
+    sender VARCHAR(10) NOT NULL CHECK (sender IN ('user', 'ai')),
+    text TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_chat_logs_session ON chat_logs(store_id, session_id);
+
+CREATE TABLE special_orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    store_id UUID REFERENCES stores(id) ON DELETE CASCADE NOT NULL,
+    customer_name VARCHAR(100) NOT NULL,
+    customer_phone VARCHAR(20) NOT NULL,
+    notes TEXT NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending', -- pending, dihubungi, selesai
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_special_orders_store ON special_orders(store_id);

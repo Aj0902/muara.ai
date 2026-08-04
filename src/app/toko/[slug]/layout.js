@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import StorefrontNavbar from './StorefrontNavbar';
 import StorefrontFooter from './StorefrontFooter';
 import StorefrontThemeWrapper from './StorefrontThemeWrapper';
+import StorefrontCartProvider from './StorefrontCartProvider';
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
@@ -38,13 +39,15 @@ export default async function StorefrontLayout({ children, params }) {
 
   return (
     <StorefrontThemeWrapper category={store.category}>
-      <div className="min-h-screen flex flex-col font-sans transition-colors duration-300">
-        <StorefrontNavbar store={store} />
-        <main className="flex-1">
-          {children}
-        </main>
-        <StorefrontFooter store={store} />
-      </div>
+      <StorefrontCartProvider store={store}>
+        <div className="min-h-screen flex flex-col font-sans transition-colors duration-300">
+          <StorefrontNavbar store={store} />
+          <main className="flex-1">
+            {children}
+          </main>
+          <StorefrontFooter store={store} />
+        </div>
+      </StorefrontCartProvider>
     </StorefrontThemeWrapper>
   );
 }

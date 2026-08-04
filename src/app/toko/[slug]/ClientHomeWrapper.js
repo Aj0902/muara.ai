@@ -2,9 +2,11 @@
 
 import Link from 'next/navigation';
 import { useStorefrontTheme } from './StorefrontThemeWrapper';
+import { useStorefrontCart } from './StorefrontCartProvider';
 
 export default function ClientHomeWrapper({ store, products, gallery }) {
   const { theme } = useStorefrontTheme();
+  const { addToCart } = useStorefrontCart();
 
   return (
     <div className="space-y-24 pb-20">
@@ -150,18 +152,25 @@ export default function ClientHomeWrapper({ store, products, gallery }) {
                   </div>
                   <div className="pt-4 border-t border-slate-100 dark:border-slate-800/50 mt-4 flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Harga</p>
-                      <p className="text-base font-bold text-slate-800 dark:text-white">
+                      <p className={`text-[9px] font-bold uppercase tracking-wider ${
+                        prod.status === 'tersedia' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                      }`}>
+                        Stok: {prod.status}
+                      </p>
+                      <p className="text-base font-bold text-slate-800 dark:text-white mt-0.5">
                         Rp {prod.price.toLocaleString('id-ID')}
                       </p>
                     </div>
-                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold border uppercase ${
-                      prod.status === 'tersedia'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/40 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/20'
-                        : 'bg-amber-50 text-amber-700 border-amber-200/40 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800/20'
-                    }`}>
-                      {prod.status}
-                    </span>
+                    
+                    <button
+                      onClick={() => addToCart(prod)}
+                      className="bg-slate-100 hover:bg-orange-600 dark:bg-slate-850 dark:hover:bg-orange-600 text-slate-600 dark:text-slate-300 hover:text-white dark:hover:text-white p-2.5 rounded-full transition-all duration-300 shadow-sm cursor-pointer"
+                      title="Tambah ke Keranjang AI"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               </div>
