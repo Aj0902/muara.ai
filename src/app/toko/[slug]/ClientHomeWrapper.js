@@ -96,7 +96,11 @@ export default function ClientHomeWrapper({ store, products, gallery }) {
               {/* Right: Story Content */}
               <div className="lg:col-span-7 space-y-6">
                 <h2 className="font-serif text-3xl sm:text-4xl font-bold text-slate-800 dark:text-white">
-                  Kisah & Warisan Rasa
+                  {store.category === 'fashion'
+                    ? 'Kisah & Warisan Pengrajin'
+                    : store.category === 'kriya'
+                    ? 'Kisah & Seni Rotan'
+                    : 'Kisah & Warisan Rasa'}
                 </h2>
                 <div className="w-12 h-1 bg-orange-600 rounded"></div>
                 <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed font-light whitespace-pre-line">
@@ -114,9 +118,19 @@ export default function ClientHomeWrapper({ store, products, gallery }) {
         <div className="flex justify-between items-end border-b border-slate-200/50 dark:border-slate-800/50 pb-6 mb-12">
           <div>
             <h2 className="font-serif text-3xl sm:text-4xl font-bold text-slate-800 dark:text-white">
-              {store.category === 'kuliner' ? 'Menu Unggulan' : 'Koleksi Terbaru'}
+              {store.category === 'fashion'
+                ? 'Koleksi Busana Pilihan'
+                : store.category === 'kriya'
+                ? 'Katalog Kerajinan Rotan Estetik'
+                : 'Menu Unggulan Resto'}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">Cita rasa terbaik buatan tangan kami.</p>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+              {store.category === 'fashion'
+                ? 'Koleksi batik khas Trusmi Cirebon buatan pengrajin lokal.'
+                : store.category === 'kriya'
+                ? 'Hasil karya kerajinan rotan estetik kualitas ekspor.'
+                : 'Cita rasa hidangan khas racikan resep asli kami.'}
+            </p>
           </div>
           <a
             href={`/toko/${store.slug}/menu`}
@@ -147,7 +161,7 @@ export default function ClientHomeWrapper({ store, products, gallery }) {
                     {prod.categories?.name || 'Item'}
                   </div>
                 </div>
-                <div className="flex-1 flex flex-col justify-between">
+                <div className="flex-1 flex flex-col justify-between space-y-4">
                   <div>
                     <h3 className="font-serif text-lg font-bold text-slate-800 dark:text-white mb-1.5">
                       {prod.name}
@@ -156,27 +170,36 @@ export default function ClientHomeWrapper({ store, products, gallery }) {
                       {prod.description}
                     </p>
                   </div>
-                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800/50 mt-4 flex items-center justify-between">
-                    <div>
-                      <p className={`text-[9px] font-bold uppercase tracking-wider ${
-                        prod.status === 'tersedia' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
-                      }`}>
-                        Stok: {prod.status}
-                      </p>
-                      <p className="text-base font-bold text-slate-800 dark:text-white mt-0.5">
-                        Rp {prod.price.toLocaleString('id-ID')}
-                      </p>
+                  
+                  <div>
+                    <p className={`text-[9px] font-bold uppercase tracking-wider ${
+                      prod.status === 'tersedia' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                    }`}>
+                      Stok: {prod.status}
+                    </p>
+                    <p className="text-base font-bold text-slate-800 dark:text-white mt-0.5 mb-3">
+                      Rp {prod.price.toLocaleString('id-ID')}
+                    </p>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => addToCart(prod)}
+                        className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 py-2.5 rounded-xl transition-all text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <span>+ Keranjang</span>
+                      </button>
+
+                      <a
+                        href={`https://wa.me/${(store.whatsapp || '081234567890').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                          `Halo admin ${store.name}, saya mau pesan langsung: *${prod.name}* (Harga: Rp ${prod.price.toLocaleString('id-ID')})`
+                        )}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl transition-all text-xs font-bold flex items-center justify-center gap-1 shadow-sm text-center cursor-pointer"
+                      >
+                        <span>⚡ Beli Direct</span>
+                      </a>
                     </div>
-                    
-                    <button
-                      onClick={() => addToCart(prod)}
-                      className="bg-slate-100 hover:bg-orange-600 dark:bg-slate-850 dark:hover:bg-orange-600 text-slate-600 dark:text-slate-300 hover:text-white dark:hover:text-white p-2.5 rounded-full transition-all duration-300 shadow-sm cursor-pointer"
-                      title="Tambah ke Keranjang AI"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                    </button>
                   </div>
                 </div>
               </div>
@@ -192,7 +215,13 @@ export default function ClientHomeWrapper({ store, products, gallery }) {
             <h2 className="font-serif text-3xl sm:text-4xl font-bold text-slate-800 dark:text-white">
               Galeri Visual Toko
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">Mengintip kesibukan dapur dan keceriaan warung kami.</p>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+              {store.category === 'fashion'
+                ? 'Mengintip karya busana dan proses kreasi batik kami.'
+                : store.category === 'kriya'
+                ? 'Mengintip proses ukir dan anyaman workshop rotan kami.'
+                : 'Mengintip kesibukan dapur dan keceriaan tempat kami.'}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
