@@ -513,41 +513,94 @@ export default function StorefrontCartProvider({ children, store }) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">LAYANAN</label>
-                  <select
-                    value={serviceType}
-                    onChange={(e) => setServiceType(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2 py-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
-                  >
-                    <option value="dine_in">Makan di Tempat</option>
-                    <option value="take_away">Bawa Pulang</option>
-                  </select>
-                </div>
-
-                {serviceType === 'dine_in' && (
+              {/* Formulir Checkout Berdasarkan Kategori Toko */}
+              {(store.category || 'kuliner').toLowerCase() === 'fashion' ? (
+                <div className="space-y-3">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1">PILIH MEJA</label>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">METODE PENGIRIMAN</label>
                     <select
-                      required
-                      value={tableNo}
-                      onChange={(e) => setTableNo(e.target.value)}
+                      value={serviceType}
+                      onChange={(e) => setServiceType(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2 py-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
                     >
-                      <option value="">Pilih Meja...</option>
-                      {Array.from({ length: 20 }, (_, i) => i + 1).map((num) => {
-                        const isOccupied = occupiedTables.includes(num);
-                        return (
-                          <option key={num} value={num} disabled={isOccupied}>
-                            Meja {num} {isOccupied ? '(Dipakai) 🔴' : '(Ready) 🟢'}
-                          </option>
-                        );
-                      })}
+                      <option value="shipping">Pengiriman Kurir / Ekspedisi 🚚</option>
+                      <option value="pickup">Ambil di Toko 🛍️</option>
                     </select>
                   </div>
-                )}
-              </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">ALAMAT LENGKAP PENGIRIMAN & KOTA</label>
+                    <textarea
+                      rows={2}
+                      required={serviceType === 'shipping'}
+                      placeholder="Masukkan alamat jalan, RT/RW, Kecamatan, & Kota..."
+                      value={checkoutNotes}
+                      onChange={(e) => setCheckoutNotes(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                </div>
+              ) : (store.category || 'kuliner').toLowerCase() === 'kriya' ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">JENIS PESANAN KRIYA</label>
+                    <select
+                      value={serviceType}
+                      onChange={(e) => setServiceType(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2 py-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
+                    >
+                      <option value="custom_po">Pesanan Custom / Pre-Order (PO) 🛠️</option>
+                      <option value="shipping">Pengiriman Langsung 📦</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">SPESIFIKASI CUSTOM & ALAMAT</label>
+                    <textarea
+                      rows={2}
+                      required
+                      placeholder="Sebutkan ukuran custom, bahan/material pilihan, & alamat kirim..."
+                      value={checkoutNotes}
+                      onChange={(e) => setCheckoutNotes(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">LAYANAN</label>
+                    <select
+                      value={serviceType}
+                      onChange={(e) => setServiceType(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2 py-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
+                    >
+                      <option value="dine_in">Makan di Tempat</option>
+                      <option value="take_away">Bawa Pulang</option>
+                    </select>
+                  </div>
+
+                  {serviceType === 'dine_in' && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">PILIH MEJA</label>
+                      <select
+                        required
+                        value={tableNo}
+                        onChange={(e) => setTableNo(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2 py-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
+                      >
+                        <option value="">Pilih Meja...</option>
+                        {Array.from({ length: 20 }, (_, i) => i + 1).map((num) => {
+                          const isOccupied = occupiedTables.includes(num);
+                          return (
+                            <option key={num} value={num} disabled={isOccupied}>
+                              Meja {num} {isOccupied ? '(Dipakai) 🔴' : '(Ready) 🟢'}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 mb-1">CATATAN OPSIONAL</label>

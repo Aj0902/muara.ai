@@ -25,77 +25,118 @@ export default function StandardOrderManager({ store, initialOrders }) {
     });
   };
 
+  const category = (store?.category || 'kuliner').toLowerCase();
+
+  const getStatusLabels = () => {
+    if (category === 'fashion') {
+      return [
+        { value: 'all', label: 'Semua' },
+        { value: 'pending', label: 'Menunggu Bayar' },
+        { value: 'paid', label: 'Dikemas / Packing' },
+        { value: 'ready', label: 'Diserahkan Kurir' },
+        { value: 'completed', label: 'Diterima' },
+        { value: 'canceled', label: 'Dibatalkan' }
+      ];
+    }
+    if (category === 'kriya') {
+      return [
+        { value: 'all', label: 'Semua' },
+        { value: 'pending', label: 'Menunggu Bayar/DP' },
+        { value: 'paid', label: 'Proses Pembuatan' },
+        { value: 'ready', label: 'QC / Finishing' },
+        { value: 'completed', label: 'Selesai / Kirim' },
+        { value: 'canceled', label: 'Dibatalkan' }
+      ];
+    }
+    return [
+      { value: 'all', label: 'Semua' },
+      { value: 'pending', label: 'Menunggu Bayar' },
+      { value: 'paid', label: 'Diproses/Dimasak' },
+      { value: 'ready', label: 'Siap Sajikan' },
+      { value: 'completed', label: 'Selesai' },
+      { value: 'canceled', label: 'Dibatalkan' }
+    ];
+  };
+
   const handlePrintReceipt = (ord) => {
-    const printWindow = window.open('', '_blank', 'width=350,height=600');
+    const printWindow = window.open('', '_blank', 'width=450,height=650');
     const itemsHtml = ord.order_items.map(item => `
-      <tr style="font-size: 11px; font-family: monospace;">
-        <td style="padding: 4px 0; max-width: 170px; word-wrap: break-word;">${item.product_name}</td>
-        <td style="padding: 4px 0; text-align: center;">${item.quantity}x</td>
-        <td style="text-align: right; padding: 4px 0;">Rp ${(parseFloat(item.price) * item.quantity).toLocaleString('id-ID')}</td>
+      <tr style="font-size: 11px; font-family: sans-serif;">
+        <td style="padding: 6px 0; border-bottom: 1px border #eee; word-wrap: break-word;"><b>${item.product_name}</b></td>
+        <td style="padding: 6px 0; text-align: center;">${item.quantity}x</td>
+        <td style="text-align: right; padding: 6px 0;">Rp ${(parseFloat(item.price) * item.quantity).toLocaleString('id-ID')}</td>
       </tr>
     `).join('');
+
+    const isFashion = category === 'fashion';
+    const isKriya = category === 'kriya';
 
     printWindow.document.write(`
       <html>
         <head>
-          <title>Struk Invoice ${ord.invoice_number}</title>
+          <title>${isFashion ? 'Label Pengiriman Paket' : isKriya ? 'SPK Work Order Workshop' : 'Struk Kasir'} ${ord.invoice_number}</title>
           <style>
-            @page { size: 80mm auto; margin: 0; }
-            body { font-family: 'Courier New', Courier, monospace; width: 260px; padding: 10px; margin: 0; color: #000; background: #fff; }
-            .header { text-align: center; margin-bottom: 8px; }
-            .title { font-size: 14px; font-weight: bold; margin: 0; text-transform: uppercase; }
-            .divider { border-top: 1px dashed #000; margin: 6px 0; }
-            .info { font-size: 10px; line-height: 1.4; margin-bottom: 5px; }
-            .table { width: 100%; border-collapse: collapse; }
-            .total { font-weight: bold; font-size: 12px; }
-            .footer { text-align: center; margin-top: 15px; font-size: 9px; line-height: 1.3; }
+            @page { size: A5 portrait; margin: 10mm; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; width: 100%; max-width: 400px; margin: 0 auto; color: #1e293b; background: #fff; line-height: 1.4; }
+            .badge { display: inline-block; padding: 4px 8px; background: #f1f5f9; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 12px; }
+            .title { font-size: 18px; font-weight: bold; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+            .subtitle { font-size: 10px; color: #64748b; margin-top: 2px; }
+            .box { border: 1.5px solid #000; border-radius: 8px; padding: 10px; margin-bottom: 12px; background: #fafafa; }
+            .table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+            .total { font-weight: bold; font-size: 14px; border-top: 2px solid #000; padding-top: 8px; }
+            .footer { text-align: center; margin-top: 20px; font-size: 10px; color: #64748b; border-top: 1px dashed #ccc; padding-top: 10px; }
           </style>
         </head>
         <body>
           <div class="header">
             <p class="title">${store.name}</p>
-            ${store.tagline ? `<p style="font-size: 8px; margin: 2px 0;">${store.tagline}</p>` : ''}
-            ${store.address ? `<p style="font-size: 8px; margin: 2px 0; font-style: italic;">${store.address}</p>` : ''}
+            <p class="subtitle">${isFashion ? '📦 LABEL PENGIRIMAN PAKET FASHION' : isKriya ? '🛠️ SURAT PERINTAH KERJA (SPK) PRODUCTION' : '🖨️ STRUK PEMESANAN KASIR'}</p>
+            ${store.address ? `<p style="font-size: 9px; margin: 4px 0;">${store.address} | WA: ${store.whatsapp || '-'}</p>` : ''}
           </div>
-          <div class="divider"></div>
-          <div class="info">
-            <div>Invoice : ${ord.invoice_number}</div>
-            <div>Tanggal : ${new Date(ord.created_at).toLocaleString('id-ID')}</div>
-            <div>Pemesak : ${ord.customer_name}</div>
-            <div>HP      : ${ord.customer_phone}</div>
-            <div>Layanan : ${ord.customer_address}</div>
+
+          <div class="box">
+            <div style="display:flex; justify-content:space-between; font-size:11px;">
+              <span><b>INVOICE:</b> ${ord.invoice_number}</span>
+              <span class="badge">${ord.status.toUpperCase()}</span>
+            </div>
+            <div style="font-size:11px; margin-top:6px;">
+              <div><b>Penerima / Pemesan:</b> ${ord.customer_name} (${ord.customer_phone})</div>
+              <div><b>Tujuan / Layanan:</b> ${ord.customer_address}</div>
+              <div><b>Tanggal:</b> ${new Date(ord.created_at).toLocaleString('id-ID')}</div>
+            </div>
           </div>
-          <div class="divider"></div>
+
           <table class="table">
             <thead>
-              <tr style="font-size: 9px; font-weight: bold; border-bottom: 1px dashed #000; text-align: left;">
-                <th style="padding-bottom: 4px;">Menu</th>
-                <th style="padding-bottom: 4px; text-align: center;">Qty</th>
-                <th style="padding-bottom: 4px; text-align: right;">Subtotal</th>
+              <tr style="font-size: 10px; font-weight: bold; border-bottom: 1px solid #000; text-align: left;">
+                <th style="padding-bottom: 6px;">Produk / Item</th>
+                <th style="padding-bottom: 6px; text-align: center;">Qty</th>
+                <th style="padding-bottom: 6px; text-align: right;">Harga</th>
               </tr>
             </thead>
             <tbody>
               ${itemsHtml}
             </tbody>
           </table>
-          <div class="divider"></div>
-          <table class="table">
-            <tr class="total">
-              <td>TOTAL</td>
-              <td style="text-align: right;">Rp ${parseFloat(ord.total_amount).toLocaleString('id-ID')}</td>
-            </tr>
-          </table>
+
+          <div class="total" style="display:flex; justify-content:space-between;">
+            <span>TOTAL BAYAR:</span>
+            <span>Rp ${parseFloat(ord.total_amount).toLocaleString('id-ID')}</span>
+          </div>
+
           ${ord.notes ? `
-            <div class="divider"></div>
-            <div style="font-size: 10px; font-style: italic;">
-              Catatan: "${ord.notes}"
+            <div style="margin-top:12px; padding:8px; background:#fffbeb; border:1px solid #fef3c7; border-radius:6px; font-size:11px;">
+              <b>Catatan / Spesifikasi Khusus:</b><br/>
+              <i>"${ord.notes}"</i>
             </div>
           ` : ''}
-          <div class="divider"></div>
+
           <div class="footer">
-            <p>Terima Kasih Atas Kunjungan Anda</p>
-            <p>Didukung oleh Platform CMS UMKM</p>
+            <p>Terima Kasih Telah Berbelanja di <b>${store.name}</b></p>
+            <p>Didukung oleh Platform Multi-Tenant CMS UMKM</p>
           </div>
+
           <script>
             window.onload = function() {
               window.print();
@@ -128,7 +169,7 @@ export default function StandardOrderManager({ store, initialOrders }) {
 
   return (
     <div className="space-y-6">
-      {/* RESTO POS Overview Cards */}
+      {/* Overview Cards Dinamis Per Kategori */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-5 shadow-sm flex items-center justify-between">
           <div>
@@ -142,22 +183,30 @@ export default function StandardOrderManager({ store, initialOrders }) {
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-5 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sedang Dimasak</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              {category === 'fashion' ? 'Dikemas / Packing' : category === 'kriya' ? 'Proses Crafting' : 'Sedang Dimasak'}
+            </p>
             <h4 className="text-2xl font-bold text-blue-600 mt-1">
               {orders.filter((o) => o.status === 'paid').length}
             </h4>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/20 text-blue-600 flex items-center justify-center font-bold">🍳</div>
+          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/20 text-blue-600 flex items-center justify-center font-bold">
+            {category === 'fashion' ? '📦' : category === 'kriya' ? '🛠️' : '🍳'}
+          </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-5 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Siap Disajikan</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              {category === 'fashion' ? 'Diserahkan Kurir' : category === 'kriya' ? 'Finishing / QC' : 'Siap Disajikan'}
+            </p>
             <h4 className="text-2xl font-bold text-emerald-600 mt-1">
               {orders.filter((o) => o.status === 'ready').length}
             </h4>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 flex items-center justify-center font-bold">🍽️</div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 flex items-center justify-center font-bold">
+            {category === 'fashion' ? '🚚' : category === 'kriya' ? '✨' : '🍽️'}
+          </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-5 shadow-sm flex items-center justify-between">
@@ -185,14 +234,7 @@ export default function StandardOrderManager({ store, initialOrders }) {
         </div>
 
         <div className="flex gap-2 overflow-x-auto">
-          {[
-            { value: 'all', label: 'Semua' },
-            { value: 'pending', label: 'Menunggu Bayar' },
-            { value: 'paid', label: 'Diproses/Dimasak' },
-            { value: 'ready', label: 'Siap Sajikan' },
-            { value: 'completed', label: 'Selesai' },
-            { value: 'canceled', label: 'Dibatalkan' }
-          ].map((st) => (
+          {getStatusLabels().map((st) => (
             <button
               key={st.value}
               onClick={() => setFilterStatus(st.value)}
@@ -208,7 +250,7 @@ export default function StandardOrderManager({ store, initialOrders }) {
         </div>
       </div>
 
-      {/* Resto Modern POS Table List */}
+      {/* Resto / E-Commerce / Workshop Order Table List */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -217,9 +259,9 @@ export default function StandardOrderManager({ store, initialOrders }) {
                 <th className="p-5 w-8"></th>
                 <th className="p-5">Invoice</th>
                 <th className="p-5">Pelanggan</th>
-                <th className="p-5">Layanan/Meja</th>
+                <th className="p-5">{category === 'fashion' ? 'Alamat Kirim' : category === 'kriya' ? 'Alamat / Opsi PO' : 'Layanan / Meja'}</th>
                 <th className="p-5">Total</th>
-                <th className="p-5">Status POS</th>
+                <th className="p-5">Status Order</th>
                 <th className="p-5 text-right">Rincian</th>
               </tr>
             </thead>
@@ -293,11 +335,9 @@ export default function StandardOrderManager({ store, initialOrders }) {
                                 : 'bg-red-50 text-red-700 border-red-200/40 dark:bg-red-950/20 dark:text-red-400'
                             }`}
                           >
-                            <option value="pending">Menunggu Bayar ⏳</option>
-                            <option value="paid">Memasak/Diproses 🍳</option>
-                            <option value="ready">Siap Disajikan 🍽️</option>
-                            <option value="completed">Selesai 🏁</option>
-                            <option value="canceled">Dibatalkan ❌</option>
+                            {getStatusLabels().filter(st => st.value !== 'all').map(st => (
+                              <option key={st.value} value={st.value}>{st.label}</option>
+                            ))}
                           </select>
                         </td>
                         <td className="p-5 text-right">

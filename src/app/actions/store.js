@@ -474,7 +474,16 @@ export async function createOrder(storeId, customerName, customerPhone, serviceT
         invoice_number: invoiceNumber,
         customer_name: customerName,
         customer_phone: customerPhone,
-        customer_address: serviceType === 'dine_in' ? `Meja ${tableNo}` : 'Take Away',
+        customer_address:
+          serviceType === 'dine_in'
+            ? `Meja ${tableNo}`
+            : serviceType === 'shipping'
+            ? 'Pengiriman Kurir / Ekspedisi'
+            : serviceType === 'pickup'
+            ? 'Pickup (Ambil di Toko)'
+            : serviceType === 'custom_po'
+            ? 'Pesanan Custom (PO)'
+            : 'Take Away / Delivery',
         total_amount: totalAmount,
         status: 'pending',
         notes: notes

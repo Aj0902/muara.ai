@@ -35,6 +35,15 @@ export async function GET(req) {
         return NextResponse.json({ error: 'invoice parameter is required for tracking' }, { status: 400 });
       }
 
+      // Fetch store category
+      const { data: storeData } = await supabase
+        .from('stores')
+        .select('category')
+        .eq('id', storeId)
+        .single();
+
+      const category = (storeData?.category || 'kuliner').toLowerCase();
+
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .select(`
@@ -64,22 +73,49 @@ export async function GET(req) {
         });
       }
 
+      let statusLabel = '';
+      if (category === 'fashion') {
+        statusLabel =
+          order.status === 'pending'
+            ? 'Menunggu Bayar ⏳'
+            : order.status === 'paid'
+            ? 'Dikemas / Packing Rapi 📦'
+            : order.status === 'ready'
+            ? 'Diserahkan ke Kurir / No. Resi 🚚'
+            : order.status === 'completed'
+            ? 'Selesai / Diterima Pembeli 🏁'
+            : 'Dibatalkan ❌';
+      } else if (category === 'kriya') {
+        statusLabel =
+          order.status === 'pending'
+            ? 'Menunggu Bayar / DP ⏳'
+            : order.status === 'paid'
+            ? 'Proses Pembuatan / Crafting 🛠️'
+            : order.status === 'ready'
+            ? 'Quality Control / Finishing ✨'
+            : order.status === 'completed'
+            ? 'Selesai / Dikirim 🏁'
+            : 'Dibatalkan ❌';
+      } else {
+        statusLabel =
+          order.status === 'pending'
+            ? 'Menunggu Bayar ⏳'
+            : order.status === 'paid'
+            ? 'Memasak / Diproses Dapur 🍳'
+            : order.status === 'ready'
+            ? 'Siap Disajikan / Meja 🍽️'
+            : order.status === 'completed'
+            ? 'Selesai 🏁'
+            : 'Dibatalkan ❌';
+      }
+
       return NextResponse.json({
         found: true,
         invoice: order.invoice_number,
         customer: order.customer_name,
         service: order.customer_address,
         status: order.status,
-        statusLabel:
-          order.status === 'pending'
-            ? 'Menunggu Bayar ⏳'
-            : order.status === 'paid'
-            ? 'Memasak/Diproses 🍳'
-            : order.status === 'ready'
-            ? 'Siap Disajikan / Sedang Makan 🍽️'
-            : order.status === 'completed'
-            ? 'Selesai 🏁'
-            : 'Dibatalkan ❌',
+        statusLabel,
         totalAmount: order.total_amount,
         items: order.order_items || [],
         orderDate: order.created_at
