@@ -57,6 +57,7 @@ export default function LoginPage() {
               type="text"
               name="username"
               required
+              autoComplete="username"
               placeholder="Username toko atau superadmin"
               className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500 transition-colors"
             />
@@ -68,6 +69,7 @@ export default function LoginPage() {
               type="password"
               name="password"
               required
+              autoComplete="current-password"
               placeholder="••••••••"
               className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500 transition-colors"
             />

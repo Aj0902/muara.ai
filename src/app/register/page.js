@@ -57,6 +57,7 @@ export default function RegisterPage() {
               type="text"
               name="username"
               required
+              autoComplete="username"
               placeholder="Username untuk login"
               className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500 transition-colors"
             />
@@ -68,6 +69,7 @@ export default function RegisterPage() {
               type="password"
               name="password"
               required
+              autoComplete="new-password"
               placeholder="Password yang mudah diingat"
               className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500 transition-colors"
             />
