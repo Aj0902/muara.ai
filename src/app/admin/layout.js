@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { getCurrentStore } from '../actions/auth';
 import Sidebar from '@/components/admin/Sidebar';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Dashboard Admin | CMS UMKM',
   description: 'Kelola identitas digital UMKM Anda'
