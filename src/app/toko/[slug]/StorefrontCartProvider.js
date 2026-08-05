@@ -83,7 +83,12 @@ export default function StorefrontCartProvider({ children, store }) {
     {
       id: 'greet',
       sender: 'ai',
-      text: `Halo kak! 👋 Saya Asisten CS AI dari ${store.name}. Ada yang bisa saya bantu hari ini? Kakak bisa tanya soal menu, jam buka, lokasi, atau lacak status pesanan.`
+      text:
+        (store.category || 'kuliner').toLowerCase() === 'fashion'
+          ? `Halo kak! 👗 Saya Asisten AI dari ${store.name}. Ada yang bisa saya bantu hari ini? Kakak bisa tanya rekomendasi busana/OOTD, panduan ukuran (size chart), lokasi toko, atau lacak status pesanan.`
+          : (store.category || 'kuliner').toLowerCase() === 'kriya'
+          ? `Halo kak! 🛠️ Saya Asisten AI dari ${store.name}. Ada yang bisa saya bantu hari ini? Kakak bisa tanya katalog kerajinan rotan, spesifikasi custom PO, lokasi toko, atau lacak status pesanan.`
+          : `Halo kak! 🍽️ Saya Asisten CS AI dari ${store.name}. Ada yang bisa saya bantu hari ini? Kakak bisa tanya soal menu lezat, jam buka, lokasi toko, atau lacak status pesanan.`
     }
   ]);
 
@@ -141,7 +146,12 @@ export default function StorefrontCartProvider({ children, store }) {
     const aiMessage = {
       id: Date.now().toString(),
       sender: 'ai',
-      text: `Mantap! 👍 Menu "${product.name}" berhasil dimasukkan ke keranjang. Silakan isi form di bawah untuk checkout.`
+      text:
+        (store.category || 'kuliner').toLowerCase() === 'fashion'
+          ? `Mantap! 👗 Pakaian "${product.name}" berhasil dimasukkan ke keranjang. Silakan isi alamat pengiriman di bawah untuk checkout.`
+          : (store.category || 'kuliner').toLowerCase() === 'kriya'
+          ? `Mantap! 🛠️ Kerajinan rotan "${product.name}" berhasil dimasukkan ke keranjang. Silakan isi detail spesifikasi di bawah untuk checkout.`
+          : `Mantap! 🍽️ Menu "${product.name}" berhasil dimasukkan ke keranjang. Silakan pilih meja atau takeaway di bawah untuk checkout.`
     };
     setCartMessages((prev) => [...prev, aiMessage]);
   };
@@ -794,10 +804,22 @@ export default function StorefrontCartProvider({ children, store }) {
         ) : (
           <div className="px-4 py-2 bg-slate-100/50 dark:bg-slate-950/80 flex gap-2 overflow-x-auto hide-scrollbar border-t border-slate-200/40 dark:border-slate-800/40">
             <button
-              onClick={() => sendCSMessage('📖 Rekomendasi Menu Utama')}
+              onClick={() =>
+                sendCSMessage(
+                  (store.category || 'kuliner').toLowerCase() === 'fashion'
+                    ? '📖 Rekomendasi Busana & OOTD'
+                    : (store.category || 'kuliner').toLowerCase() === 'kriya'
+                    ? '📖 Rekomendasi Kerajinan Rotan'
+                    : '📖 Rekomendasi Menu Utama'
+                )
+              }
               className="shrink-0 text-[10px] font-semibold px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full hover:border-orange-500/50 transition-colors"
             >
-              📖 Rekomendasi Menu
+              {(store.category || 'kuliner').toLowerCase() === 'fashion'
+                ? '📖 Katalog Busana'
+                : (store.category || 'kuliner').toLowerCase() === 'kriya'
+                ? '📖 Katalog Rotan'
+                : '📖 Rekomendasi Menu'}
             </button>
             <button
               onClick={() => sendCSMessage('⏰ Jam Buka Operasional')}
@@ -925,7 +947,13 @@ export default function StorefrontCartProvider({ children, store }) {
           
           <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md p-6 border border-slate-200 dark:border-slate-800 shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
-              <h3 className="font-serif text-lg font-bold text-slate-800 dark:text-white">Formulir Pesanan Khusus (Acara/Catering)</h3>
+              <h3 className="font-serif text-lg font-bold text-slate-800 dark:text-white">
+                {(store.category || 'kuliner').toLowerCase() === 'fashion'
+                  ? 'Formulir Order Seragam / Grosir'
+                  : (store.category || 'kuliner').toLowerCase() === 'kriya'
+                  ? 'Formulir Order Custom Project Furniture'
+                  : 'Formulir Pesanan Khusus (Acara/Catering)'}
+              </h3>
               <button
                 onClick={() => setSpecialOrderOpen(false)}
                 className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500"
@@ -971,12 +999,24 @@ export default function StorefrontCartProvider({ children, store }) {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">RINCIAN PESANAN KHUSUS (ACARA / CATERING)</label>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                    {(store.category || 'kuliner').toLowerCase() === 'fashion'
+                      ? 'RINCIAN PESANAN SERAGAM / GROSIR BATIK'
+                      : (store.category || 'kuliner').toLowerCase() === 'kriya'
+                      ? 'SPESIFIKASI CUSTOM PROJECT & DIMENSI ROTAN'
+                      : 'RINCIAN PESANAN KHUSUS (ACARA / CATERING)'}
+                  </label>
                   <textarea
                     name="special_notes"
                     required
                     rows="4"
-                    placeholder="Tulis detail pesanan katering Anda, jumlah porsi, tanggal acara, dll..."
+                    placeholder={
+                      (store.category || 'kuliner').toLowerCase() === 'fashion'
+                        ? 'Tulis detail jumlah kemeja/gamis, bahan kain, ukuran S-XXL, dan tanggal pengerjaan...'
+                        : (store.category || 'kuliner').toLowerCase() === 'kriya'
+                        ? 'Tulis detail dimensi ukuran rotan, warna finishing, jumlah unit, dan tanggal deadline...'
+                        : 'Tulis detail pesanan katering Anda, jumlah porsi, tanggal acara, dll...'
+                    }
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
                   ></textarea>
                 </div>

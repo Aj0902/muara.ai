@@ -12,7 +12,15 @@ export default function StorefrontNavbar({ store }) {
   const navLinks = [
     { name: 'Home', path: `/toko/${store.slug}` },
     { name: 'About', path: `/toko/${store.slug}#about` },
-    { name: store.category === 'kuliner' ? 'Menu' : 'Katalog', path: `/toko/${store.slug}/menu` },
+    {
+      name:
+        store.category === 'fashion'
+          ? 'Katalog Busana'
+          : store.category === 'kriya'
+          ? 'Katalog Kriya'
+          : 'Menu Utama',
+      path: `/toko/${store.slug}/menu`
+    },
     { name: 'Jurnal', path: `/toko/${store.slug}/jurnal` }
   ];
 

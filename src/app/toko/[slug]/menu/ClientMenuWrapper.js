@@ -27,10 +27,18 @@ export default function ClientMenuWrapper({ store, categories, products }) {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200/50 dark:border-slate-800/50 pb-6">
         <div>
           <h1 className="font-serif text-3xl sm:text-4xl font-bold text-slate-800 dark:text-white">
-            {store.category === 'kuliner' ? 'Eksplorasi Menu' : 'Katalog Produk'}
+            {store.category === 'fashion'
+              ? 'Katalog Busana & OOTD'
+              : store.category === 'kriya'
+              ? 'Katalog Kerajinan Rotan'
+              : 'Daftar Menu Utama'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            {store.category === 'kuliner' ? 'Temukan sajian lezat terbaik dari dapur kami.' : 'Daftar produk terbaik yang kami tawarkan.'}
+            {store.category === 'fashion'
+              ? 'Temukan aneka batik Megamendung, gamis, dan kemeja premium khas Trusmi.'
+              : store.category === 'kriya'
+              ? 'Temukan aneka perabotan rotan alami & sintetis kualitas ekspor.'
+              : 'Temukan sajian lezat terbaik dari dapur resep asli kami.'}
           </p>
         </div>
         
@@ -41,7 +49,13 @@ export default function ClientMenuWrapper({ store, categories, products }) {
           </svg>
           <input
             type="text"
-            placeholder={store.category === 'kuliner' ? 'Cari menu makanan...' : 'Cari produk...'}
+            placeholder={
+              store.category === 'fashion'
+                ? 'Cari kemeja, gamis, batik, atau size...'
+                : store.category === 'kriya'
+                ? 'Cari kursi rotan, keranjang, atau meja...'
+                : 'Cari menu makanan atau minuman...'
+            }
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full py-2.5 pl-12 pr-4 text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all shadow-sm"
