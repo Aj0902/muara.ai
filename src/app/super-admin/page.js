@@ -13,7 +13,7 @@ export default async function SuperAdminPage() {
   const isSuper = cookieStore.get('super_session')?.value === 'active';
 
   if (!isSuper) {
-    redirect('/login');
+    redirect('/super-admin/login');
   }
 
   // Fetch all stores

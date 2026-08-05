@@ -153,6 +153,33 @@ export async function loginStore(formData) {
   }
 }
 
+// 2b. Login Super Admin (Halaman Khusus)
+export async function loginSuperAdmin(formData) {
+  const username = formData.get('username')?.trim();
+  const password = formData.get('password');
+
+  if (!username || !password) {
+    return { error: 'Username dan Password Super Admin wajib diisi!' };
+  }
+
+  if (
+    username === 'superadmin' &&
+    (password === 'super123' ||
+      password === 'Muara#2026!SecuredPass' ||
+      password === 'MuaraUMKM2026!')
+  ) {
+    const cookieStore = await cookies();
+    cookieStore.set('super_session', 'active', {
+      path: '/',
+      maxAge: 60 * 60 * 24,
+      httpOnly: true
+    });
+    return { success: true, redirect: '/super-admin' };
+  }
+
+  return { error: 'Username atau Password Super Admin tidak valid!' };
+}
+
 // 3. Logout Toko & Super Admin
 export async function logoutStore() {
   const cookieStore = await cookies();

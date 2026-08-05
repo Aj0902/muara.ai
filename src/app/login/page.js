@@ -40,7 +40,7 @@ export default function LoginPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Masuk Dashboard</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Masuk Dashboard Toko</h2>
           <p className="text-sm text-slate-400 mt-2">Kelola toko digital Anda dengan asisten cerdas.</p>
         </div>
 
@@ -52,13 +52,13 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Username</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Username Toko</label>
             <input
               type="text"
               name="username"
               required
               autoComplete="username"
-              placeholder="Username toko atau superadmin"
+              placeholder="Masukkan username toko Anda"
               className="w-full px-4 py-3 bg-slate-900/60 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-orange-500 transition-colors"
             />
           </div>
@@ -89,15 +89,15 @@ export default function LoginPage() {
                 Memproses...
               </>
             ) : (
-              'Masuk Sekarang'
+              'Masuk Dashboard Toko'
             )}
           </button>
         </form>
 
         <div className="bg-slate-900/40 p-4 rounded-xl mt-6 border border-slate-700/50 space-y-1">
           <p className="text-[11px] text-slate-400 font-mono">
-            💡 <span className="font-semibold text-white">Akun Demo (Bebas Warning Chrome):</span><br />
-            Username: <span className="text-cyan-400">admin</span> / <span className="text-cyan-400">busanatrusmi</span> / <span className="text-cyan-400">superadmin</span><br />
+            💡 <span className="font-semibold text-white">Akun Demo Toko (Bebas Warning Chrome):</span><br />
+            Username: <span className="text-cyan-400">admin</span> / <span className="text-cyan-400">busanatrusmi</span> / <span className="text-cyan-400">rotanplumbon</span><br />
             Password: <span className="text-amber-400 font-bold">Muara#2026!SecuredPass</span>
           </p>
         </div>
