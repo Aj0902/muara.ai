@@ -62,6 +62,13 @@ export default function StorefrontCartProvider({ children, store }) {
   const [showQRIS, setShowQRIS] = useState(false);
   const [generatedInvoice, setGeneratedInvoice] = useState('');
 
+  // Dedicated Invoice Tracking Form states
+  const [showCartTrackInput, setShowCartTrackInput] = useState(false);
+  const [cartTrackInvoice, setCartTrackInvoice] = useState('');
+
+  const [showCSTrackInput, setShowCSTrackInput] = useState(false);
+  const [csTrackInvoice, setCSTrackInvoice] = useState('');
+
   // Conversational Cart messages
   const [cartMessages, setCartMessages] = useState([
     {
@@ -79,6 +86,21 @@ export default function StorefrontCartProvider({ children, store }) {
       text: `Halo kak! 👋 Saya Asisten CS AI dari ${store.name}. Ada yang bisa saya bantu hari ini? Kakak bisa tanya soal menu, jam buka, lokasi, atau lacak status pesanan.`
     }
   ]);
+
+  const [chatSessionId, setChatSessionId] = useState('');
+
+  // Persist a unique session ID for the chat logs
+  useEffect(() => {
+    let sess = localStorage.getItem(`chat_session_${store.id}`);
+    if (!sess) {
+      sess = crypto.randomUUID();
+      localStorage.setItem(`chat_session_${store.id}`, sess);
+    }
+    const timer = setTimeout(() => {
+      setChatSessionId(sess);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [store.id]);
 
   // Sync cart from localStorage on mount
   useEffect(() => {
@@ -148,78 +170,101 @@ export default function StorefrontCartProvider({ children, store }) {
   const cartSubtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   // Send message inside conversational cart
-  const sendCartMessage = (text) => {
-    if (!text.trim()) return;
+  const sendCartMessage = async (text) => {
+    if (!text.trim() || !chatSessionId) return;
     const userMsg = { id: Date.now().toString() + '-u', sender: 'user', text };
     setCartMessages((prev) => [...prev, userMsg]);
 
-    // Simulated AI response
-    setTimeout(() => {
-      let aiResponseText = 'Maaf kak, saya tidak mengerti. Bisa diperjelas?';
-      const cleanText = text.toLowerCase();
+    const typingId = Date.now().toString() + '-typing';
+    setCartMessages((prev) => [...prev, { id: typingId, sender: 'ai', text: 'Mengetik... 🤖' }]);
 
-      if (cleanText.includes('checkout') || cleanText.includes('bayar') || cleanText.includes('pesan')) {
-        if (cart.length === 0) {
-          aiResponseText = 'Keranjang belanja kakak masih kosong nih. Yuk pilih menu dulu di daftar produk!';
-        } else {
-          aiResponseText = `Untuk memproses pesanan, silakan isi form Nama, WhatsApp, dan Pilihan Meja di bawah rincian belanjaan kakak, lalu klik tombol "Lanjutkan Pesanan" di bawah!`;
-        }
-      } else if (cleanText.includes('tambah') || cleanText.includes('menu')) {
-        aiResponseText = 'Kakak bisa menutup drawer ini dan klik tombol robot keranjang di daftar produk untuk menambahkan menu lezat lainnya!';
-      } else if (cleanText.includes('lacak') || cleanText.includes('order') || cleanText.includes('status')) {
-        aiResponseText = 'Kakak bisa melacak status pengiriman atau pesanan langsung lewat widget "Tanya CS AI" di pojok kanan bawah!';
-      } else if (cleanText.includes('keluhan') || cleanText.includes('salah') || cleanText.includes('kecewa')) {
-        aiResponseText = 'Aduh maaf banget atas ketidaknyamanannya kak. Kakak bisa klik tombol "Tanya CS AI" melayang di kanan bawah untuk langsung terhubung ke CS Admin/Keluhan Pelanggan kami!';
-      } else {
-        aiResponseText = `Siap kak, pesan tercatat. Pesanan saat ini adalah ${cart.map(i => `${i.name} (${i.quantity}x)`).join(', ')}. Silakan isi form di bawah untuk melanjutkan pembayaran!`;
-      }
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          type: 'cart',
+          message: text,
+          sessionId: chatSessionId,
+          storeId: store.id,
+          cartItems: cart
+        })
+      });
 
-      setCartMessages((prev) => [
-        ...prev,
-        { id: Date.now().toString() + '-ai', sender: 'ai', text: aiResponseText }
-      ]);
-    }, 800);
+      const data = await response.json();
+      setCartMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === typingId ? { ...msg, text: data.reply || 'Maaf, ada kendala koneksi.' } : msg
+        )
+      );
+    } catch (err) {
+      console.error('Failed to send cart message:', err);
+      setCartMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === typingId ? { ...msg, text: 'Maaf kak, gagal menghubungi server AI.' } : msg
+        )
+      );
+    }
   };
 
   // Send message to CS AI
-  const sendCSMessage = (text) => {
-    if (!text.trim()) return;
+  const sendCSMessage = async (text) => {
+    if (!text.trim() || !chatSessionId) return;
     const userMsg = { id: Date.now().toString() + '-u', sender: 'user', text };
     setCSMessages((prev) => [...prev, userMsg]);
 
-    // Simulated AI response
-    setTimeout(() => {
-      let aiResponseText = `Terima kasih pesannya kak. Ada hal spesifik tentang ${store.name} yang ingin ditanyakan?`;
-      const cleanText = text.toLowerCase();
+    const typingId = Date.now().toString() + '-typing';
+    setCSMessages((prev) => [...prev, { id: typingId, sender: 'ai', text: 'Mengetik... 🤖' }]);
 
-      if (cleanText.includes('jam') || cleanText.includes('buka') || cleanText.includes('tutup') || cleanText.includes('operasional')) {
-        aiResponseText = store.hours 
-          ? `Toko kami buka pada jam: *${store.hours}*. Silakan mampir atau pesan secara online ya kak!`
-          : 'Untuk saat ini detail jam buka belum diperbarui oleh pemilik toko. Biasanya kami buka setiap hari mulai pukul 09.00 WIB.';
-      } else if (cleanText.includes('lokasi') || cleanText.includes('alamat') || cleanText.includes('maps') || cleanText.includes('posisi')) {
-        aiResponseText = store.address
-          ? `Alamat lengkap kami berada di: *${store.address}*.${store.maps_link ? ` Kakak bisa lihat peta jalurnya di sini: [Google Maps Link](${store.maps_link})` : ''}`
-          : 'Alamat kami belum dikonfigurasi secara lengkap di database. Silakan hubungi kami via WhatsApp untuk detail lokasi presisi.';
-      } else if (cleanText.includes('menu') || cleanText.includes('rekomendasi') || cleanText.includes('enak') || cleanText.includes('best seller')) {
-        aiResponseText = `Untuk menu andalan di kategori *${store.category}* kami, kami sangat merekomendasikan produk unggulan kami yang bisa dilihat di halaman katalog. Kakak bisa klik tombol robot di sebelah harga produk untuk langsung memasukannya ke keranjang belanja!`;
-      } else if (cleanText.includes('lacak') || cleanText.includes('order') || cleanText.includes('pesanan') || cleanText.includes('tracking') || cleanText.includes('invoice')) {
-        aiResponseText = 'Untuk melacak pesanan, silakan ketik nomor Invoice atau kode pesanan Anda (contoh: INV-20260805-001). CS AI kami akan langsung mengecek status pengirimannya!';
-      } else if (cleanText.includes('inv-') || cleanText.includes('invoice-')) {
-        // Fetch order mock or real status
-        aiResponseText = '🔍 *Status Pesanan (MOCK TRACKING)*:\n• No. Invoice: ' + text.toUpperCase() + '\n• Status: *Sedang Diproses/Dalam Pengantaran Kurir*\n• Estimasi Tiba: *15-20 Menit*\n\nTerima kasih sudah bersabar menunggu pesanan terbaik kami!';
-      } else if (cleanText.includes('keluhan') || cleanText.includes('kecewa') || cleanText.includes('dingin') || cleanText.includes('lama')) {
-        aiResponseText = `Maaf atas kendalanya kak 🙏. Data keluhan kakak sudah dicatat. Jika ingin respon langsung dari pemilik toko, kakak bisa langsung mengklik link WhatsApp di bagian bawah.`;
-      } else {
-        aiResponseText = store.chatbot_persona
-          ? `[CS AI Response]: ${store.chatbot_persona}`
-          : `Halo! Saya asisten pintar ${store.name}. Untuk respon cepat mengenai pemesanan atau kustomisasi pesanan besar, kakak juga bisa mengklik tombol hubungi WhatsApp kami.`;
-      }
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          type: 'cs',
+          message: text,
+          sessionId: chatSessionId,
+          storeId: store.id,
+          cartItems: cart
+        })
+      });
 
-      setCSMessages((prev) => [
-        ...prev,
-        { id: Date.now().toString() + '-ai', sender: 'ai', text: aiResponseText }
-      ]);
-    }, 800);
+      const data = await response.json();
+      setCSMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === typingId ? { ...msg, text: data.reply || 'Maaf, ada kendala koneksi.' } : msg
+        )
+      );
+    } catch (err) {
+      console.error('Failed to send CS message:', err);
+      setCSMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === typingId ? { ...msg, text: 'Maaf kak, gagal menghubungi server AI.' } : msg
+        )
+      );
+    }
+  };
+
+  const handleCartTrackSubmit = (e) => {
+    e.preventDefault();
+    if (!cartTrackInvoice.trim()) return;
+    const inv = cartTrackInvoice.trim();
+    sendCartMessage(`Lacak status pesanan invoice: ${inv}`);
+    setCartTrackInvoice('');
+    setShowCartTrackInput(false);
+  };
+
+  const handleCSTrackSubmit = (e) => {
+    e.preventDefault();
+    if (!csTrackInvoice.trim()) return;
+    const inv = csTrackInvoice.trim();
+    sendCSMessage(`Lacak status pesanan invoice: ${inv}`);
+    setCSTrackInvoice('');
+    setShowCSTrackInput(false);
   };
 
   // Submit Special Order (Katering / Acara)
@@ -533,20 +578,46 @@ export default function StorefrontCartProvider({ children, store }) {
         {/* Suggestion Chips & User input */}
         <div className="bg-white dark:bg-slate-900 border-t border-slate-200/50 dark:border-slate-800/50 p-4 space-y-4 shrink-0">
           
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => sendCartMessage('🍔 Tambah Menu Lain')}
-              className="text-[10px] font-semibold px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full transition-colors"
-            >
-              🍔 Tambah Menu Lain
-            </button>
-            <button
-              onClick={() => setSpecialOrderOpen(true)}
-              className="text-[10px] font-semibold px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 rounded-full transition-colors flex items-center gap-1"
-            >
-              ✨ Pesanan Khusus (Katering/Acara)
-            </button>
-          </div>
+          {showCartTrackInput ? (
+            <form onSubmit={handleCartTrackSubmit} className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-xl border border-amber-200 dark:border-amber-800">
+              <input
+                type="text"
+                required
+                placeholder="Ketik No. Invoice (misal: INV-20260805-001)..."
+                value={cartTrackInvoice}
+                onChange={(e) => setCartTrackInvoice(e.target.value)}
+                className="flex-1 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 px-3 py-1.5 rounded-lg text-xs text-slate-800 dark:text-white focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shrink-0 transition-colors"
+              >
+                Cari 🔍
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCartTrackInput(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs px-1"
+              >
+                ✕
+              </button>
+            </form>
+          ) : (
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setShowCartTrackInput(true)}
+                className="text-[10px] font-semibold px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300 rounded-full transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                📦 Lacak Pesanan
+              </button>
+              <button
+                onClick={() => setSpecialOrderOpen(true)}
+                className="text-[10px] font-semibold px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 rounded-full transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                ✨ Pesanan Khusus (Acara)
+              </button>
+            </div>
+          )}
 
           <div className="flex justify-between items-center text-xs border-b border-slate-100 dark:border-slate-800 pb-2">
             <span className="text-slate-400 font-semibold uppercase">Total Belanja</span>
@@ -642,33 +713,59 @@ export default function StorefrontCartProvider({ children, store }) {
           ))}
         </div>
 
-        {/* Quick Prompts list */}
-        <div className="px-4 py-2 bg-slate-100/50 dark:bg-slate-950/80 flex gap-2 overflow-x-auto hide-scrollbar border-t border-slate-200/40 dark:border-slate-800/40">
-          <button
-            onClick={() => sendCSMessage('📖 Rekomendasi Menu Utama')}
-            className="shrink-0 text-[10px] font-semibold px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full hover:border-orange-500/50 transition-colors"
-          >
-            📖 Rekomendasi Menu
-          </button>
-          <button
-            onClick={() => sendCSMessage('⏰ Jam Buka Operasional')}
-            className="shrink-0 text-[10px] font-semibold px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full hover:border-orange-500/50 transition-colors"
-          >
-            ⏰ Jam Buka
-          </button>
-          <button
-            onClick={() => sendCSMessage('📍 Lokasi Lengkap')}
-            className="shrink-0 text-[10px] font-semibold px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full hover:border-orange-500/50 transition-colors"
-          >
-            📍 Lokasi
-          </button>
-          <button
-            onClick={() => sendCSMessage('📦 Lacak Status Pesanan')}
-            className="shrink-0 text-[10px] font-semibold px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full hover:border-orange-500/50 transition-colors"
-          >
-            📦 Lacak Pesanan
-          </button>
-        </div>
+        {/* Quick Prompts list & Tracking form */}
+        {showCSTrackInput ? (
+          <form onSubmit={handleCSTrackSubmit} className="p-2 bg-amber-50 dark:bg-amber-950/30 border-t border-amber-200 dark:border-amber-800 flex items-center gap-2">
+            <input
+              type="text"
+              required
+              placeholder="Ketik No. Invoice (misal: INV-20260805-001)..."
+              value={csTrackInvoice}
+              onChange={(e) => setCSTrackInvoice(e.target.value)}
+              className="flex-1 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 px-3 py-1.5 rounded-lg text-xs text-slate-800 dark:text-white focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shrink-0 transition-colors"
+            >
+              Cari 🔍
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCSTrackInput(false)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs px-1"
+            >
+              ✕
+            </button>
+          </form>
+        ) : (
+          <div className="px-4 py-2 bg-slate-100/50 dark:bg-slate-950/80 flex gap-2 overflow-x-auto hide-scrollbar border-t border-slate-200/40 dark:border-slate-800/40">
+            <button
+              onClick={() => sendCSMessage('📖 Rekomendasi Menu Utama')}
+              className="shrink-0 text-[10px] font-semibold px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full hover:border-orange-500/50 transition-colors"
+            >
+              📖 Rekomendasi Menu
+            </button>
+            <button
+              onClick={() => sendCSMessage('⏰ Jam Buka Operasional')}
+              className="shrink-0 text-[10px] font-semibold px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full hover:border-orange-500/50 transition-colors"
+            >
+              ⏰ Jam Buka
+            </button>
+            <button
+              onClick={() => sendCSMessage('📍 Lokasi Lengkap')}
+              className="shrink-0 text-[10px] font-semibold px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full hover:border-orange-500/50 transition-colors"
+            >
+              📍 Lokasi
+            </button>
+            <button
+              onClick={() => setShowCSTrackInput(true)}
+              className="shrink-0 text-[10px] font-semibold px-3 py-1.5 bg-amber-500 text-white rounded-full transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              📦 Lacak Pesanan
+            </button>
+          </div>
+        )}
 
         {/* Input Area */}
         <form
