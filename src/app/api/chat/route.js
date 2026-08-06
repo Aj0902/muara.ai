@@ -59,6 +59,13 @@ export async function POST(req) {
       replyText = `⚠️ **[System Warning]**: Env var \`N8N_WEBHOOK_URL\` belum dikonfigurasi di file \`.env.local\`. Silakan konfigurasikan webhook n8n Anda.\n\n*Pesan Anda:* "${message}"`;
     } else {
       try {
+        const categoryInstructions =
+          store.category === 'fashion'
+            ? 'Toko ini adalah RITEL FASHION / BATIK. JANGAN PERNAH menyebutkan "menu makanan", "meja", "dapur", atau "resep". Gunakan istilah "katalog busana", "pakaian/batik", "size chart", "packing", "pengiriman kurir/ekspedisi".'
+            : store.category === 'kriya'
+            ? 'Toko ini adalah KERAJINAN KRIYA / FURNITURE ROTAN. JANGAN PERNAH menyebutkan "menu makanan", "meja makan", "dapur", atau "resep". Gunakan istilah "katalog kerajinan rotan", "perabotan", "custom order/PO", "workshop", "finishing".'
+            : 'Toko ini adalah KULINER / RESTO / CAFE. Gunakan istilah "menu makanan", "sajian lezat", "dapur", "meja dine-in", "takeaway".';
+
         const payload = {
           type, // "cart" atau "cs"
           message,
@@ -66,6 +73,7 @@ export async function POST(req) {
           store_id: storeId,
           store_name: store.name,
           store_category: store.category,
+          category_instructions: categoryInstructions,
           store_info: {
             tagline: store.tagline,
             description: store.description,

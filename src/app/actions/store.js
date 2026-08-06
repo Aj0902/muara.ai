@@ -477,6 +477,8 @@ export async function createOrder(storeId, customerName, customerPhone, serviceT
         customer_address:
           serviceType === 'dine_in'
             ? `Meja ${tableNo}`
+            : notes
+            ? notes
             : serviceType === 'shipping'
             ? 'Pengiriman Kurir / Ekspedisi'
             : serviceType === 'pickup'

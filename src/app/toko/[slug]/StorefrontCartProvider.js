@@ -33,9 +33,16 @@ export default function StorefrontCartProvider({ children, store }) {
   const [isPendingCheckout, startCheckoutTransition] = useTransition();
 
   // Checkout Form States
+  const defaultService =
+    (store?.category || 'kuliner').toLowerCase() === 'fashion'
+      ? 'shipping'
+      : (store?.category || 'kuliner').toLowerCase() === 'kriya'
+      ? 'custom_po'
+      : 'dine_in';
+
   const [custName, setCustName] = useState('');
   const [custPhone, setCustPhone] = useState('');
-  const [serviceType, setServiceType] = useState('dine_in'); // dine_in | take_away
+  const [serviceType, setServiceType] = useState(defaultService);
   const [tableNo, setTableNo] = useState('');
   const [checkoutNotes, setCheckoutNotes] = useState('');
   const [occupiedTables, setOccupiedTables] = useState([]);
@@ -312,8 +319,8 @@ export default function StorefrontCartProvider({ children, store }) {
       alert('Nama dan No WhatsApp wajib diisi untuk melakukan pemesanan!');
       return;
     }
-    if (serviceType === 'dine_in' && !tableNo) {
-      alert('Silakan pilih nomor meja untuk layanan Dine In!');
+    if ((store?.category || 'kuliner').toLowerCase() === 'kuliner' && serviceType === 'dine_in' && !tableNo) {
+      alert('Silakan pilih nomor meja untuk layanan Makan di Tempat!');
       return;
     }
 
