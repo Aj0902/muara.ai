@@ -42,6 +42,7 @@ export default function StorefrontCartProvider({ children, store }) {
 
   const [custName, setCustName] = useState('');
   const [custPhone, setCustPhone] = useState('');
+  const [custAddress, setCustAddress] = useState('');
   const [serviceType, setServiceType] = useState(defaultService);
   const [tableNo, setTableNo] = useState('');
   const [checkoutNotes, setCheckoutNotes] = useState('');
@@ -325,13 +326,14 @@ export default function StorefrontCartProvider({ children, store }) {
     }
 
     startCheckoutTransition(async () => {
+      const combinedNotes = [custAddress, checkoutNotes].filter(Boolean).join(' | ');
       const res = await createOrder(
         store.id,
         custName,
         custPhone,
         serviceType,
         tableNo,
-        checkoutNotes,
+        combinedNotes,
         cartSubtotal,
         cart
       );
@@ -550,8 +552,8 @@ export default function StorefrontCartProvider({ children, store }) {
                       rows={2}
                       required={serviceType === 'shipping'}
                       placeholder="Masukkan alamat jalan, RT/RW, Kecamatan, & Kota..."
-                      value={checkoutNotes}
-                      onChange={(e) => setCheckoutNotes(e.target.value)}
+                      value={custAddress}
+                      onChange={(e) => setCustAddress(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
                     />
                   </div>
@@ -575,8 +577,8 @@ export default function StorefrontCartProvider({ children, store }) {
                       rows={2}
                       required
                       placeholder="Sebutkan ukuran custom, bahan/material pilihan, & alamat kirim..."
-                      value={checkoutNotes}
-                      onChange={(e) => setCheckoutNotes(e.target.value)}
+                      value={custAddress}
+                      onChange={(e) => setCustAddress(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
                     />
                   </div>
