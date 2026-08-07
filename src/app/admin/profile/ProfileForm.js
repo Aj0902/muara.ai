@@ -1,18 +1,95 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { updateStoreProfile } from '../../actions/store';
+import { useState, useTransition, useRef } from 'react';
+import { updateStoreProfile, importProfileFromCSV } from '../../actions/store';
+import { parseCSVFile, downloadCSVTemplate } from '@/lib/csvParser';
 
 export default function ProfileForm({ store }) {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState({ type: '', text: '' });
+
+  // Cloudinary Upload states
+  const [logoUrl, setLogoUrl] = useState(store?.logo_url || '');
+  const [heroUrl, setHeroUrl] = useState(store?.hero_url || '');
+  const [aboutUrl, setAboutUrl] = useState(store?.about_url || '');
+  const [uploadingField, setUploadingField] = useState(null); // 'logo' | 'hero' | 'about' | null
+
+  // CSV Import state
+  const [isImportingCSV, setIsImportingCSV] = useState(false);
+  const csvInputRef = useRef(null);
+
+  const logoInputRef = useRef(null);
+  const heroInputRef = useRef(null);
+  const aboutInputRef = useRef(null);
+
+  const handleImageUpload = async (e, field) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingField(field);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', `muara_ai/profil_${store.id}`);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      if (field === 'logo') setLogoUrl(data.url);
+      else if (field === 'hero') setHeroUrl(data.url);
+      else if (field === 'about') setAboutUrl(data.url);
+    } catch (err) {
+      console.error('Image Upload Error:', err);
+      alert('Gagal mengunggah foto: ' + err.message);
+    } finally {
+      setUploadingField(null);
+    }
+  };
+
+  const handleCSVUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsImportingCSV(true);
+    try {
+      const rows = await parseCSVFile(file);
+      if (!rows || rows.length === 0) {
+        alert('File CSV kosong!');
+        setIsImportingCSV(false);
+        return;
+      }
+
+      startTransition(async () => {
+        const res = await importProfileFromCSV(rows[0]);
+        if (res.error) {
+          alert(res.error);
+        } else {
+          alert('Berhasil mengimpor konfigurasi profil toko dari CSV!');
+          window.location.reload();
+        }
+      });
+    } catch (err) {
+      console.error('CSV Import Error:', err);
+      alert('Gagal menguraikan file CSV: ' + err.message);
+    } finally {
+      setIsImportingCSV(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage({ type: '', text: '' });
 
     const formData = new FormData(e.currentTarget);
-    
+    if (logoUrl) formData.set('logo_url', logoUrl);
+    if (heroUrl) formData.set('hero_url', heroUrl);
+    if (aboutUrl) formData.set('about_url', aboutUrl);
+
     startTransition(async () => {
       const res = await updateStoreProfile(formData);
       if (res.error) {
@@ -26,12 +103,40 @@ export default function ProfileForm({ store }) {
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm p-6 sm:p-8">
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-100 pb-5 mb-8">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-100 pb-5 mb-8 gap-4">
         <div>
           <h3 className="text-lg font-bold text-slate-800">Identitas Digital Toko</h3>
           <p className="text-xs text-slate-400 mt-1">Informasi di bawah ini akan terupdate langsung di halaman depan website Anda.</p>
         </div>
-        <div className="mt-2 sm:mt-0">
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Download Template CSV */}
+          <button
+            type="button"
+            onClick={() => downloadCSVTemplate('profile', store.category)}
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs transition-colors border border-slate-200"
+            title="Download Format CSV Profil"
+          >
+            <span>📥 Format CSV</span>
+          </button>
+
+          {/* Import CSV */}
+          <input
+            type="file"
+            accept=".csv"
+            ref={csvInputRef}
+            onChange={handleCSVUpload}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => csvInputRef.current?.click()}
+            disabled={isImportingCSV}
+            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold text-xs transition-colors shadow-sm disabled:opacity-50"
+          >
+            <span>{isImportingCSV ? 'Mengimpor...' : '📤 Import CSV Profil'}</span>
+          </button>
+
           <span className="inline-flex px-3 py-1 bg-orange-50 text-orange-700 text-xs font-bold uppercase rounded-full border border-orange-100">
             Kategori: {store?.category}
           </span>
@@ -67,6 +172,7 @@ export default function ProfileForm({ store }) {
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
               />
             </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1.5">Tagline Usaha</label>
               <input
@@ -77,16 +183,39 @@ export default function ProfileForm({ store }) {
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
               />
             </div>
+
             <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Link Logo Usaha (URL Gambar)</label>
-              <input
-                type="url"
-                name="logo_url"
-                defaultValue={store?.logo_url}
-                placeholder="https://example.com/logo.png"
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
-              />
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Logo Usaha (Cloudinary CDN)</label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={logoInputRef}
+                    onChange={(e) => handleImageUpload(e, 'logo')}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={uploadingField === 'logo'}
+                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  >
+                    📷 {uploadingField === 'logo' ? 'Mengunggah...' : 'Unggah Logo'}
+                  </button>
+                  {logoUrl && <span className="text-xs text-emerald-600 font-semibold">✓ Ter-upload</span>}
+                </div>
+                <input
+                  type="text"
+                  name="logo_url"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  placeholder="URL Logo..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50"
+                />
+              </div>
             </div>
+
             <div className="md:col-span-2">
               <label className="block text-xs font-semibold text-slate-500 mb-1.5">Deskripsi Singkat Hero</label>
               <textarea
@@ -97,6 +226,7 @@ export default function ProfileForm({ store }) {
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm resize-none"
               />
             </div>
+
             <div className="md:col-span-2">
               <label className="block text-xs font-semibold text-slate-500 mb-1.5">Cerita Usaha (Bagian Tentang Kami)</label>
               <textarea
@@ -107,25 +237,69 @@ export default function ProfileForm({ store }) {
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm resize-none"
               />
             </div>
+
             <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Link Foto Hero Utama (URL Gambar)</label>
-              <input
-                type="url"
-                name="hero_url"
-                defaultValue={store?.hero_url}
-                placeholder="https://images.unsplash.com/..."
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
-              />
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Foto Hero Utama (Cloudinary CDN)</label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={heroInputRef}
+                    onChange={(e) => handleImageUpload(e, 'hero')}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => heroInputRef.current?.click()}
+                    disabled={uploadingField === 'hero'}
+                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  >
+                    📷 {uploadingField === 'hero' ? 'Mengunggah...' : 'Unggah Foto Hero'}
+                  </button>
+                  {heroUrl && <span className="text-xs text-emerald-600 font-semibold">✓ Ter-upload</span>}
+                </div>
+                <input
+                  type="text"
+                  name="hero_url"
+                  value={heroUrl}
+                  onChange={(e) => setHeroUrl(e.target.value)}
+                  placeholder="URL Foto Hero..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50"
+                />
+              </div>
             </div>
+
             <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Link Foto Cerita/About (URL Gambar)</label>
-              <input
-                type="url"
-                name="about_url"
-                defaultValue={store?.about_url}
-                placeholder="https://images.unsplash.com/..."
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
-              />
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Foto Cerita/About (Cloudinary CDN)</label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={aboutInputRef}
+                    onChange={(e) => handleImageUpload(e, 'about')}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => aboutInputRef.current?.click()}
+                    disabled={uploadingField === 'about'}
+                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  >
+                    📷 {uploadingField === 'about' ? 'Mengunggah...' : 'Unggah Foto About'}
+                  </button>
+                  {aboutUrl && <span className="text-xs text-emerald-600 font-semibold">✓ Ter-upload</span>}
+                </div>
+                <input
+                  type="text"
+                  name="about_url"
+                  value={aboutUrl}
+                  onChange={(e) => setAboutUrl(e.target.value)}
+                  placeholder="URL Foto About..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50"
+                />
+              </div>
             </div>
           </div>
         </div>

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { addJournalItem, deleteJournalItem } from '../../actions/store';
+import { useState, useTransition, useRef } from 'react';
+import { addJournalItem, deleteJournalItem, bulkInsertJournals } from '../../actions/store';
+import { parseCSVFile, downloadCSVTemplate } from '@/lib/csvParser';
 
 export default function JournalManager({ store, initialStories }) {
   const [stories, setStories] = useState(initialStories);
@@ -12,6 +13,76 @@ export default function JournalManager({ store, initialStories }) {
   const [content, setContent] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [error, setError] = useState('');
+
+  // Image Upload state
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // CSV Import state
+  const [isImportingCSV, setIsImportingCSV] = useState(false);
+  const csvInputRef = useRef(null);
+
+  // Handle Image Upload to Cloudinary
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', `muara_ai/jurnal_${store.id}`);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      setImageUrl(data.url);
+    } catch (err) {
+      console.error('Image Upload Error:', err);
+      alert('Gagal mengunggah foto cover: ' + err.message);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Handle CSV Import
+  const handleCSVUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsImportingCSV(true);
+    try {
+      const rows = await parseCSVFile(file);
+      if (!rows || rows.length === 0) {
+        alert('File CSV kosong atau format tidak sesuai!');
+        setIsImportingCSV(false);
+        return;
+      }
+
+      startTransition(async () => {
+        const res = await bulkInsertJournals(rows);
+        if (res.error) {
+          alert(res.error);
+        } else {
+          alert(`Berhasil mengimpor ${res.count} artikel jurnal!`);
+          window.location.reload();
+        }
+      });
+    } catch (err) {
+      console.error('CSV Import Error:', err);
+      alert('Gagal menguraikan file CSV: ' + err.message);
+    } finally {
+      setIsImportingCSV(false);
+    }
+  };
 
   const handleAddStory = async (e) => {
     e.preventDefault();
@@ -57,17 +128,46 @@ export default function JournalManager({ store, initialStories }) {
   return (
     <div className="space-y-8">
       {/* 1. Header Section */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
           <h3 className="text-lg font-bold text-slate-800">Cerita & Jurnal</h3>
           <p className="text-xs text-slate-400 mt-1">Bagikan rahasia resep, sejarah toko, atau kisah di balik layar untuk menarik hati konsumen.</p>
         </div>
-        <button
-          onClick={() => setIsOpenForm(!isOpenForm)}
-          className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-xl font-semibold text-xs transition-all shadow-md shadow-orange-600/10 shrink-0"
-        >
-          {isOpenForm ? 'Tutup Form' : 'Tulis Cerita Baru'}
-        </button>
+        
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Download Template CSV */}
+          <button
+            onClick={() => downloadCSVTemplate('journals', store.category)}
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs flex items-center gap-1.5 transition-colors border border-slate-200"
+            title="Download Format Template CSV Jurnal"
+          >
+            <span>📥 Template CSV</span>
+          </button>
+
+          {/* Import CSV */}
+          <input
+            type="file"
+            accept=".csv"
+            ref={csvInputRef}
+            onChange={handleCSVUpload}
+            className="hidden"
+          />
+          <button
+            onClick={() => csvInputRef.current?.click()}
+            disabled={isImportingCSV}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold text-xs flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50"
+          >
+            <span>{isImportingCSV ? 'Mengimpor...' : '📤 Import CSV Massal'}</span>
+          </button>
+
+          {/* Tulis Manual */}
+          <button
+            onClick={() => setIsOpenForm(!isOpenForm)}
+            className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-xl font-semibold text-xs transition-all shadow-md shadow-orange-600/10 shrink-0"
+          >
+            {isOpenForm ? 'Tutup Form' : 'Tulis Cerita Baru'}
+          </button>
+        </div>
       </div>
 
       {/* 2. Form Tambah Cerita */}
@@ -94,14 +194,46 @@ export default function JournalManager({ store, initialStories }) {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Link Cover Foto (URL Gambar)</label>
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://images.unsplash.com/..."
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
-            />
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Cover Foto Jurnal (Cloudinary CDN)</label>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingImage}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {isUploadingImage ? 'Mengunggah ke Cloudinary...' : '📷 Unggah Cover dari Perangkat'}
+                </button>
+                {imageUrl && (
+                  <span className="text-[11px] text-emerald-600 font-semibold">✓ Ter-upload</span>
+                )}
+              </div>
+
+              {imageUrl && (
+                <div className="relative w-32 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm mt-1">
+                  <img src={imageUrl} alt="Cover Preview" className="w-full h-full object-cover" />
+                </div>
+              )}
+
+              <input
+                type="text"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="Atau tempel URL foto langsung di sini..."
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-xs bg-slate-50"
+              />
+            </div>
           </div>
 
           <div>

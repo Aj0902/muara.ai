@@ -583,3 +583,106 @@ export async function getOccupiedTables(storeId) {
     return { occupied: [] };
   }
 }
+
+// 10. BULK CSV IMPORT ACTIONS
+export async function bulkInsertProducts(productsArray) {
+  const cookieStore = await cookies();
+  const storeId = cookieStore.get('store_session')?.value;
+  if (!storeId) return { error: 'Unauthorized!' };
+
+  if (!productsArray || productsArray.length === 0) {
+    return { error: 'Tidak ada data produk dalam file CSV!' };
+  }
+
+  try {
+    const formattedProducts = productsArray.map((row) => ({
+      store_id: storeId,
+      name: row.nama || row.name || 'Produk Baru',
+      price: parseInt((row.harga || row.price || '0').replace(/[^0-9]/g, '')) || 0,
+      category: row.kategori || row.category || 'Umum',
+      description: row.deskripsi || row.description || '',
+      image_url: row.gambar_url || row.image_url || 'https://images.unsplash.com/photo-1544441893-675973e31985',
+      status: row.status || 'active'
+    }));
+
+    const { error } = await supabase.from('products').insert(formattedProducts);
+    if (error) throw error;
+
+    revalidatePath('/admin/produk');
+    revalidatePath('/toko/[slug]', 'page');
+    return { success: true, count: formattedProducts.length };
+  } catch (err) {
+    console.error('Bulk Insert Products Error:', err);
+    return { error: 'Gagal mengimpor CSV Produk: ' + err.message };
+  }
+}
+
+export async function bulkInsertJournals(journalsArray) {
+  const cookieStore = await cookies();
+  const storeId = cookieStore.get('store_session')?.value;
+  if (!storeId) return { error: 'Unauthorized!' };
+
+  if (!journalsArray || journalsArray.length === 0) {
+    return { error: 'Tidak ada data jurnal dalam file CSV!' };
+  }
+
+  try {
+    const formattedJournals = journalsArray.map((row) => ({
+      store_id: storeId,
+      title: row.judul || row.title || 'Artikel Jurnal Baru',
+      excerpt: row.kutipan || row.excerpt || '',
+      content: row.konten || row.content || '',
+      image_url: row.gambar_url || row.image_url || 'https://images.unsplash.com/photo-1544441893-675973e31985'
+    }));
+
+    const { error } = await supabase.from('journals').insert(formattedJournals);
+    if (error) throw error;
+
+    revalidatePath('/admin/jurnal');
+    revalidatePath('/toko/[slug]/jurnal', 'page');
+    return { success: true, count: formattedJournals.length };
+  } catch (err) {
+    console.error('Bulk Insert Journals Error:', err);
+    return { error: 'Gagal mengimpor CSV Jurnal: ' + err.message };
+  }
+}
+
+export async function importProfileFromCSV(profileRow) {
+  const cookieStore = await cookies();
+  const storeId = cookieStore.get('store_session')?.value;
+  if (!storeId) return { error: 'Unauthorized!' };
+
+  try {
+    const updateData = {
+      tagline: profileRow.tagline || undefined,
+      description: profileRow.description || undefined,
+      story: profileRow.story || undefined,
+      address: profileRow.address || undefined,
+      hours: profileRow.hours || undefined,
+      whatsapp: profileRow.whatsapp || undefined,
+      instagram: profileRow.instagram || undefined,
+      tiktok: profileRow.tiktok || undefined,
+      facebook: profileRow.facebook || undefined,
+      shopeefood: profileRow.shopeefood || undefined,
+      gofood: profileRow.gofood || undefined,
+      grabfood: profileRow.grabfood || undefined
+    };
+
+    // Clean undefined keys
+    Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
+
+    const { error } = await supabase
+      .from('stores')
+      .update(updateData)
+      .eq('id', storeId);
+
+    if (error) throw error;
+
+    revalidatePath('/admin/profile');
+    revalidatePath('/toko/[slug]', 'page');
+    return { success: true };
+  } catch (err) {
+    console.error('Import Profile CSV Error:', err);
+    return { error: 'Gagal mengimpor profil toko: ' + err.message };
+  }
+}

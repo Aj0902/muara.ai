@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef } from 'react';
 import Link from 'next/link';
 import { addGalleryItem, deleteGalleryItem } from '../../actions/store';
 
@@ -12,6 +12,39 @@ export default function GalleryManager({ store, initialItems }) {
   const [caption, setCaption] = useState('');
   const [displayOrder, setDisplayOrder] = useState('0');
   const [message, setMessage] = useState('');
+
+  // Image Upload state
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    setMessage('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', `muara_ai/galeri_${store.id}`);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      setImageUrl(data.url);
+    } catch (err) {
+      console.error('Image Upload Error:', err);
+      setMessage('Gagal mengunggah foto: ' + err.message);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
   const handleAddPhoto = async (e) => {
     e.preventDefault();
@@ -88,13 +121,13 @@ export default function GalleryManager({ store, initialItems }) {
 
           {/* Hero Banner */}
           <div className="md:col-span-5 flex flex-col gap-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Foto Utama (Hero Banner)</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hero Banner</label>
             <div className="relative w-full h-32 rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden group">
               {store?.hero_url ? (
                 <img src={store.hero_url} alt="Hero" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-slate-300 text-xs font-semibold">
-                  Belum Ada Hero Image
+                  Belum Ada Hero Banner
                 </div>
               )}
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -112,7 +145,7 @@ export default function GalleryManager({ store, initialItems }) {
 
           {/* About Image */}
           <div className="md:col-span-4 flex flex-col gap-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Foto Tentang Kami (About)</label>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Foto Tentang Kami</label>
             <div className="relative w-full h-32 rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden group">
               {store?.about_url ? (
                 <img src={store.about_url} alt="About" className="w-full h-full object-cover" />
@@ -160,15 +193,35 @@ export default function GalleryManager({ store, initialItems }) {
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
             <div className="md:col-span-6">
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Link URL Gambar</label>
-              <input
-                type="url"
-                required
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://images.unsplash.com/..."
-                className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-xs bg-white"
-              />
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Foto Galeri (Cloudinary CDN)</label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingImage}
+                    className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  >
+                    📷 {isUploadingImage ? 'Mengunggah...' : 'Unggah Foto'}
+                  </button>
+                  {imageUrl && <span className="text-xs text-emerald-600 font-semibold">✓ Ter-upload</span>}
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="Atau tempel URL gambar..."
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-xs bg-white"
+                />
+              </div>
             </div>
             
             <div className="md:col-span-4">
