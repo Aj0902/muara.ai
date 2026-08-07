@@ -55,12 +55,6 @@ export default function Home() {
 
         <div className="flex items-center gap-3 sm:gap-4">
           <Link
-            href="/login"
-            className="text-xs sm:text-sm font-semibold text-slate-300 hover:text-white px-4 py-2.5 rounded-xl hover:bg-slate-800/50 transition-all border border-slate-800/60"
-          >
-            Masuk Dashboard
-          </Link>
-          <Link
             href="/register"
             className="text-xs sm:text-sm font-semibold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-cyan-500/20"
           >

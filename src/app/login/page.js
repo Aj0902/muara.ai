@@ -94,14 +94,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="bg-slate-900/40 p-4 rounded-xl mt-6 border border-slate-700/50 space-y-1">
-          <p className="text-[11px] text-slate-400 font-mono">
-            💡 <span className="font-semibold text-white">Akun Demo Toko (Bebas Warning Chrome):</span><br />
-            Username: <span className="text-cyan-400">admin</span> / <span className="text-cyan-400">busanatrusmi</span> / <span className="text-cyan-400">rotanplumbon</span><br />
-            Password: <span className="text-amber-400 font-bold">Muara#2026!SecuredPass</span>
-          </p>
-        </div>
-
         <p className="text-center text-sm text-slate-400 mt-6">
           Belum punya toko?{' '}
           <Link href="/register" className="text-orange-500 hover:underline">
