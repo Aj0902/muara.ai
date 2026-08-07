@@ -10,6 +10,7 @@ import {
   bulkInsertProducts
 } from '../../actions/store';
 import { parseCSVFile, downloadCSVTemplate } from '@/lib/csvParser';
+import { compressImage } from '@/lib/imageCompressor';
 
 export default function ProductManager({ store, initialCategories, initialProducts }) {
   const [categories, setCategories] = useState(initialCategories);
@@ -32,13 +33,14 @@ export default function ProductManager({ store, initialCategories, initialProduc
 
   // Handle Image Upload to Cloudinary
   const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const rawFile = e.target.files[0];
+    if (!rawFile) return;
 
     setIsUploadingImage(true);
     setError('');
 
     try {
+      const file = await compressImage(rawFile);
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', `muara_ai/produk_${store.id}`);
@@ -47,6 +49,16 @@ export default function ProductManager({ store, initialCategories, initialProduc
         method: 'POST',
         body: formData
       });
+
+      if (!res.ok) {
+        const text = await res.text();
+        if (res.status === 413 || text.includes('Entity Too Large')) {
+          throw new Error('Ukuran foto terlalu besar. Silakan pilih foto dengan ukuran lebih kecil.');
+        }
+        let jsonErr;
+        try { jsonErr = JSON.parse(text); } catch {}
+        throw new Error(jsonErr?.error || text || `HTTP Status ${res.status}`);
+      }
 
       const data = await res.json();
       if (data.error) {

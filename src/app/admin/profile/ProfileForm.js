@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef } from 'react';
 import { updateStoreProfile, importProfileFromCSV } from '../../actions/store';
 import { parseCSVFile, downloadCSVTemplate } from '@/lib/csvParser';
+import { compressImage } from '@/lib/imageCompressor';
 
 export default function ProfileForm({ store }) {
   const [isPending, startTransition] = useTransition();
@@ -23,11 +24,12 @@ export default function ProfileForm({ store }) {
   const aboutInputRef = useRef(null);
 
   const handleImageUpload = async (e, field) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const rawFile = e.target.files[0];
+    if (!rawFile) return;
 
     setUploadingField(field);
     try {
+      const file = await compressImage(rawFile);
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', `muara_ai/profil_${store.id}`);
@@ -36,6 +38,16 @@ export default function ProfileForm({ store }) {
         method: 'POST',
         body: formData
       });
+
+      if (!res.ok) {
+        const text = await res.text();
+        if (res.status === 413 || text.includes('Entity Too Large')) {
+          throw new Error('Ukuran foto terlalu besar. Silakan pilih foto dengan ukuran lebih kecil.');
+        }
+        let jsonErr;
+        try { jsonErr = JSON.parse(text); } catch {}
+        throw new Error(jsonErr?.error || text || `HTTP Status ${res.status}`);
+      }
 
       const data = await res.json();
       if (data.error) throw new Error(data.error);

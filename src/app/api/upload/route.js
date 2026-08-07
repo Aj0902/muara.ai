@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { uploadImageToCloudinary } from '@/lib/cloudinary';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req) {
   try {
     const formData = await req.formData();
@@ -18,7 +20,10 @@ export async function POST(req) {
 
     return NextResponse.json({ url: imageUrl });
   } catch (err) {
-    console.error('Upload Error:', err);
-    return NextResponse.json({ error: 'Gagal mengunggah foto ke Cloudinary: ' + err.message }, { status: 500 });
+    console.error('Upload API Error:', err);
+    return NextResponse.json(
+      { error: 'Gagal memproses unggahan foto: ' + (err.message || 'Ukuran file mungkin terlalu besar.') },
+      { status: 500 }
+    );
   }
 }
