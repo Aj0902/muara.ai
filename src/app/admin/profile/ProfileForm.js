@@ -220,34 +220,42 @@ export default function ProfileForm({ store }) {
             </div>
 
             <div className="space-y-4">
-              <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Platform Pengantaran</h5>
+              <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                {(store?.category || 'kuliner').toLowerCase() === 'kuliner' ? 'Platform Pengantaran (Food Delivery)' : 'Platform E-Commerce / Marketplace'}
+              </h5>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Link Toko ShopeeFood</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                  {(store?.category || 'kuliner').toLowerCase() === 'kuliner' ? 'Link Toko ShopeeFood' : 'Link Toko Shopee Official / Mall'}
+                </label>
                 <input
                   type="url"
                   name="shopeefood"
                   defaultValue={store?.shopeefood}
-                  placeholder="https://shopee.co.id/universal-link"
+                  placeholder={(store?.category || 'kuliner').toLowerCase() === 'kuliner' ? 'https://shopee.co.id/universal-link' : 'https://shopee.co.id/namatoko'}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Link Toko GoFood</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                  {(store?.category || 'kuliner').toLowerCase() === 'kuliner' ? 'Link Toko GoFood' : 'Link Toko Tokopedia Official'}
+                </label>
                 <input
                   type="url"
                   name="gofood"
                   defaultValue={store?.gofood}
-                  placeholder="https://gofood.link/a/..."
+                  placeholder={(store?.category || 'kuliner').toLowerCase() === 'kuliner' ? 'https://gofood.link/a/...' : 'https://tokopedia.com/namatoko'}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Link Toko GrabFood</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                  {(store?.category || 'kuliner').toLowerCase() === 'kuliner' ? 'Link Toko GrabFood' : 'Link Toko Lazada Official'}
+                </label>
                 <input
                   type="url"
                   name="grabfood"
                   defaultValue={store?.grabfood}
-                  placeholder="https://grab.onelink.me/..."
+                  placeholder={(store?.category || 'kuliner').toLowerCase() === 'kuliner' ? 'https://grab.onelink.me/...' : 'https://lazada.co.id/shop/namatoko'}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
                 />
               </div>

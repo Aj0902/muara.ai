@@ -124,10 +124,12 @@ export default function StorefrontFooter({ store }) {
             </div>
           </div>
 
-          {/* Section 4: Pesan Online platforms (Shopee Food, GoFood, GrabFood) */}
+          {/* Section 4: Pesan Online / Marketplace Official */}
           {hasPesanOnline && (
             <div className="space-y-4">
-              <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400">Pesan Online</h4>
+              <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400">
+                {(store.category || 'kuliner').toLowerCase() === 'kuliner' ? 'Pesan Online (Food Delivery)' : 'Toko Online Official'}
+              </h4>
               <div className="grid grid-cols-1 gap-2.5">
                 {store.shopeefood && (
                   <a
@@ -141,7 +143,9 @@ export default function StorefrontFooter({ store }) {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                       </svg>
                     </div>
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 group-hover:text-orange-600 transition-colors">Shopee Food</span>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 group-hover:text-orange-600 transition-colors">
+                      {(store.category || 'kuliner').toLowerCase() === 'kuliner' ? 'Shopee Food' : 'Shopee Official Store'}
+                    </span>
                   </a>
                 )}
 
@@ -153,12 +157,18 @@ export default function StorefrontFooter({ store }) {
                     className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-800/50 p-2.5 rounded-xl flex items-center gap-3 hover:border-emerald-500/50 dark:hover:border-emerald-500/40 transition-colors group"
                   >
                     <div className="w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10h10z" />
-                      </svg>
+                      {(store.category || 'kuliner').toLowerCase() === 'kuliner' ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10h10z" />
+                        </svg>
+                      ) : (
+                        <span className="text-xs font-bold text-white">Tok</span>
+                      )}
                     </div>
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 group-hover:text-emerald-600 transition-colors">GoFood</span>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 group-hover:text-emerald-600 transition-colors">
+                      {(store.category || 'kuliner').toLowerCase() === 'kuliner' ? 'GoFood' : 'Tokopedia Official'}
+                    </span>
                   </a>
                 )}
 
@@ -167,14 +177,20 @@ export default function StorefrontFooter({ store }) {
                     href={store.grabfood}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-800/50 p-2.5 rounded-xl flex items-center gap-3 hover:border-green-500/50 dark:hover:border-green-500/40 transition-colors group"
+                    className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200/50 dark:border-slate-800/50 p-2.5 rounded-xl flex items-center gap-3 hover:border-blue-500/50 dark:hover:border-blue-500/40 transition-colors group"
                   >
-                    <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                      </svg>
+                    <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
+                      {(store.category || 'kuliner').toLowerCase() === 'kuliner' ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                      ) : (
+                        <span className="text-xs font-bold text-white">Laz</span>
+                      )}
                     </div>
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 group-hover:text-green-600 transition-colors">GrabFood</span>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 group-hover:text-blue-600 transition-colors">
+                      {(store.category || 'kuliner').toLowerCase() === 'kuliner' ? 'GrabFood' : 'Lazada Official Store'}
+                    </span>
                   </a>
                 )}
               </div>
