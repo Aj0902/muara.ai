@@ -6,7 +6,7 @@ import { useStorefrontCart } from '../StorefrontCartProvider';
 
 export default function ClientMenuWrapper({ store, categories, products }) {
   const { theme } = useStorefrontTheme();
-  const { addToCart } = useStorefrontCart();
+  const { addToCart, buyDirect } = useStorefrontCart();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -180,16 +180,12 @@ export default function ClientMenuWrapper({ store, categories, products }) {
                         <span>+ Keranjang</span>
                       </button>
 
-                      <a
-                        href={`https://wa.me/${(store.whatsapp || '081234567890').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                          `Halo admin ${store.name}, saya mau pesan langsung: *${prod.name}* (Harga: Rp ${prod.price.toLocaleString('id-ID')})`
-                        )}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl transition-all text-xs font-bold flex items-center justify-center gap-1 shadow-sm text-center cursor-pointer"
+                      <button
+                        onClick={() => buyDirect(prod)}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl transition-all text-xs font-bold flex items-center justify-center gap-1 shadow-sm cursor-pointer"
                       >
                         <span>⚡ Beli Direct</span>
-                      </a>
+                      </button>
                     </div>
                   </div>
                 </div>

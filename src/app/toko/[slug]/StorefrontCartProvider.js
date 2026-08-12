@@ -4,6 +4,31 @@ import { useState, useEffect, createContext, useContext, useTransition } from 'r
 import { useStorefrontTheme } from './StorefrontThemeWrapper';
 import { createSpecialOrder, createOrder, getOccupiedTables } from '@/app/actions/store';
 
+// Helper to parse size and color options from product description
+function getProductOptions(product) {
+  const desc = product.description || '';
+  
+  // Parse sizes (e.g., "Ukuran: S, M, L, XL" or "Size: S, M, L")
+  let sizes = ['S', 'M', 'L', 'XL'];
+  const sizeRegex = /(?:ukuran|size)\s*:\s*([^.\n;]+)/i;
+  const sizeMatch = desc.match(sizeRegex);
+  if (sizeMatch) {
+    const parsed = sizeMatch[1].split(/[,|/]/).map(s => s.trim()).filter(Boolean);
+    if (parsed.length > 0) sizes = parsed;
+  }
+  
+  // Parse colors (e.g., "Warna: Hitam, Navy, Maroon" or "Warna: Hitam | Putih")
+  let colors = ['Hitam', 'Putih', 'Navy', 'Maroon', 'Cream'];
+  const colorRegex = /(?:warna|color)\s*:\s*([^.\n;]+)/i;
+  const colorMatch = desc.match(colorRegex);
+  if (colorMatch) {
+    const parsed = colorMatch[1].split(/[,|/]/).map(c => c.trim()).filter(Boolean);
+    if (parsed.length > 0) colors = parsed;
+  }
+  
+  return { sizes, colors };
+}
+
 const CartContext = createContext({
   cart: [],
   cartCount: 0,
@@ -13,6 +38,7 @@ const CartContext = createContext({
   chatOpen: false,
   setChatOpen: () => {},
   addToCart: () => {},
+  buyDirect: () => {},
   removeFromCart: () => {},
   updateQuantity: () => {},
   clearCart: () => {},
@@ -77,6 +103,15 @@ export default function StorefrontCartProvider({ children, store }) {
   const [showCSTrackInput, setShowCSTrackInput] = useState(false);
   const [csTrackInvoice, setCSTrackInvoice] = useState('');
 
+  // Size & Color Selection Modal States (kategori fashion)
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [optionsProduct, setOptionsProduct] = useState(null);
+  const [selectedSize, setSelectedSize] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
+  const [availableSizes, setAvailableSizes] = useState([]);
+  const [availableColors, setAvailableColors] = useState([]);
+  const [isBeliDirectMode, setIsBeliDirectMode] = useState(false);
+
   // Conversational Cart messages
   const [cartMessages, setCartMessages] = useState([
     {
@@ -137,26 +172,39 @@ export default function StorefrontCartProvider({ children, store }) {
     localStorage.setItem(`cart_${store.id}`, JSON.stringify(newCart));
   };
 
-  const addToCart = (product) => {
-    const existing = cart.find((item) => item.id === product.id);
+  const executeAddToCart = (product, selectedSize = null, selectedColor = null) => {
+    const existing = cart.find(
+      (item) =>
+        item.id === product.id &&
+        item.selectedSize === selectedSize &&
+        item.selectedColor === selectedColor
+    );
     if (existing) {
       const updated = cart.map((item) =>
-        item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        item.id === product.id &&
+        item.selectedSize === selectedSize &&
+        item.selectedColor === selectedColor
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
       );
       saveCart(updated);
     } else {
-      saveCart([...cart, { ...product, quantity: 1 }]);
+      saveCart([...cart, { ...product, quantity: 1, selectedSize, selectedColor }]);
     }
     // Auto open cart drawer
     setCartOpen(true);
 
     // AI reacts to adding item
+    let detailText = '';
+    if (selectedSize || selectedColor) {
+      detailText = ` (${[selectedSize ? `Ukuran: ${selectedSize}` : '', selectedColor ? `Warna: ${selectedColor}` : ''].filter(Boolean).join(', ')})`;
+    }
     const aiMessage = {
       id: Date.now().toString(),
       sender: 'ai',
       text:
         (store.category || 'kuliner').toLowerCase() === 'fashion'
-          ? `Mantap! 👗 Pakaian "${product.name}" berhasil dimasukkan ke keranjang. Silakan isi alamat pengiriman di bawah untuk checkout.`
+          ? `Mantap! 👗 Pakaian "${product.name}${detailText}" berhasil dimasukkan ke keranjang. Silakan isi alamat pengiriman di bawah untuk checkout.`
           : (store.category || 'kuliner').toLowerCase() === 'kriya'
           ? `Mantap! 🛠️ Kerajinan rotan "${product.name}" berhasil dimasukkan ke keranjang. Silakan isi detail spesifikasi di bawah untuk checkout.`
           : `Mantap! 🍽️ Menu "${product.name}" berhasil dimasukkan ke keranjang. Silakan pilih meja atau takeaway di bawah untuk checkout.`
@@ -164,18 +212,61 @@ export default function StorefrontCartProvider({ children, store }) {
     setCartMessages((prev) => [...prev, aiMessage]);
   };
 
-  const removeFromCart = (productId) => {
-    const updated = cart.filter((item) => item.id !== productId);
+  const addToCart = (product, selectedSize = null, selectedColor = null) => {
+    if ((store.category || 'kuliner').toLowerCase() === 'fashion' && (!selectedSize || !selectedColor)) {
+      const options = getProductOptions(product);
+      setOptionsProduct(product);
+      setAvailableSizes(options.sizes);
+      setAvailableColors(options.colors);
+      setSelectedSize(options.sizes[0] || 'M');
+      setSelectedColor(options.colors[0] || 'Hitam');
+      setIsBeliDirectMode(false);
+      setShowOptionsModal(true);
+    } else {
+      executeAddToCart(product, selectedSize, selectedColor);
+    }
+  };
+
+  const buyDirect = (product) => {
+    if ((store.category || 'kuliner').toLowerCase() === 'fashion') {
+      const options = getProductOptions(product);
+      setOptionsProduct(product);
+      setAvailableSizes(options.sizes);
+      setAvailableColors(options.colors);
+      setSelectedSize(options.sizes[0] || 'M');
+      setSelectedColor(options.colors[0] || 'Hitam');
+      setIsBeliDirectMode(true);
+      setShowOptionsModal(true);
+    } else {
+      const text = `Halo admin ${store.name}, saya mau pesan langsung: *${product.name}* (Harga: Rp ${product.price.toLocaleString('id-ID')})`;
+      const url = `https://wa.me/${(store.whatsapp || '081234567890').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`;
+      window.open(url, '_blank');
+    }
+  };
+
+  const removeFromCart = (productId, selectedSize = null, selectedColor = null) => {
+    const updated = cart.filter(
+      (item) =>
+        !(
+          item.id === productId &&
+          item.selectedSize === selectedSize &&
+          item.selectedColor === selectedColor
+        )
+    );
     saveCart(updated);
   };
 
-  const updateQuantity = (productId, qty) => {
+  const updateQuantity = (productId, qty, selectedSize = null, selectedColor = null) => {
     if (qty <= 0) {
-      removeFromCart(productId);
+      removeFromCart(productId, selectedSize, selectedColor);
       return;
     }
     const updated = cart.map((item) =>
-      item.id === productId ? { ...item, quantity: qty } : item
+      item.id === productId &&
+      item.selectedSize === selectedSize &&
+      item.selectedColor === selectedColor
+        ? { ...item, quantity: qty }
+        : item
     );
     saveCart(updated);
   };
@@ -368,6 +459,7 @@ export default function StorefrontCartProvider({ children, store }) {
         chatOpen,
         setChatOpen,
         addToCart,
+        buyDirect,
         removeFromCart,
         updateQuantity,
         clearCart,
@@ -454,52 +546,60 @@ export default function StorefrontCartProvider({ children, store }) {
           {cart.length > 0 && (
             <div className="mt-4 pt-4 border-t border-slate-200/50 dark:border-slate-800/50 space-y-3">
               <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Item dalam Keranjang:</p>
-              {cart.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/40 rounded-xl p-3 flex items-center gap-3 shadow-sm"
-                >
-                  <img
-                    src={item.image_url}
-                    alt={item.name}
-                    className="w-12 h-12 rounded-lg object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-bold text-slate-800 dark:text-white truncate">{item.name}</h4>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      Rp {item.price.toLocaleString('id-ID')}
-                    </p>
-                  </div>
-                  {/* Quantity controls */}
-                  <div className="flex items-center gap-2 border border-slate-100 dark:border-slate-800 rounded-lg p-1 bg-slate-50/50 dark:bg-slate-950">
-                    <button
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      className="w-5 h-5 rounded hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 font-bold text-xs"
-                    >
-                      -
-                    </button>
-                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 w-4 text-center">
-                      {item.quantity}
-                    </span>
-                    <button
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="w-5 h-5 rounded hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 font-bold text-xs"
-                    >
-                      +
-                    </button>
-                  </div>
-                  {/* Remove */}
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    className="text-slate-400 hover:text-red-500 p-1"
-                    title="Hapus"
+              {cart.map((item) => {
+                const itemKey = `${item.id}-${item.selectedSize || ''}-${item.selectedColor || ''}`;
+                return (
+                  <div
+                    key={itemKey}
+                    className="bg-white dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/40 rounded-xl p-3 flex items-center gap-3 shadow-sm"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
+                    <img
+                      src={item.image_url}
+                      alt={item.name}
+                      className="w-12 h-12 rounded-lg object-cover bg-slate-100 dark:bg-slate-800 shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-bold text-slate-800 dark:text-white truncate">{item.name}</h4>
+                      {(item.selectedSize || item.selectedColor) && (
+                        <p className="text-[9px] text-slate-500 font-medium mt-0.5">
+                          {[item.selectedSize && `Ukuran: ${item.selectedSize}`, item.selectedColor && `Warna: ${item.selectedColor}`].filter(Boolean).join(' | ')}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Rp {item.price.toLocaleString('id-ID')}
+                      </p>
+                    </div>
+                    {/* Quantity controls */}
+                    <div className="flex items-center gap-2 border border-slate-100 dark:border-slate-800 rounded-lg p-1 bg-slate-50/50 dark:bg-slate-950">
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity - 1, item.selectedSize, item.selectedColor)}
+                        className="w-5 h-5 rounded hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 font-bold text-xs"
+                      >
+                        -
+                      </button>
+                      <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 w-4 text-center">
+                        {item.quantity}
+                      </span>
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity + 1, item.selectedSize, item.selectedColor)}
+                        className="w-5 h-5 rounded hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 font-bold text-xs"
+                      >
+                        +
+                      </button>
+                    </div>
+                    {/* Remove */}
+                    <button
+                      onClick={() => removeFromCart(item.id, item.selectedSize, item.selectedColor)}
+                      className="text-slate-400 hover:text-red-500 p-1"
+                      title="Hapus"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -1039,6 +1139,130 @@ export default function StorefrontCartProvider({ children, store }) {
                 </button>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* G. MODAL OPSI UKURAN & WARNA (FASHION) */}
+      {showOptionsModal && optionsProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
+            onClick={() => setShowOptionsModal(false)}
+          ></div>
+          
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm p-6 border border-slate-200 dark:border-slate-800 shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+              <div>
+                <h3 className="font-serif text-base font-bold text-slate-800 dark:text-white">
+                  Pilih Variasi Produk
+                </h3>
+                <p className="text-[10px] text-slate-400 mt-0.5">Silakan pilih ukuran dan warna sebelum melanjutkan.</p>
+              </div>
+              <button
+                onClick={() => setShowOptionsModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500 transition-colors font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Product Summary */}
+            <div className="flex gap-3 mb-5 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80">
+              <img 
+                src={optionsProduct.image_url} 
+                alt={optionsProduct.name} 
+                className="w-14 h-14 object-cover rounded-lg bg-slate-200 shrink-0" 
+              />
+              <div className="min-w-0">
+                <h4 className="text-xs font-bold text-slate-800 dark:text-white truncate">{optionsProduct.name}</h4>
+                <p className="text-[11px] font-bold text-orange-600 mt-1">
+                  Rp {optionsProduct.price.toLocaleString('id-ID')}
+                </p>
+                {optionsProduct.status && (
+                  <span className="inline-block text-[8px] uppercase font-mono px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded mt-1.5 border border-emerald-100 dark:border-emerald-900/30 font-bold">
+                    Stok: {optionsProduct.status}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Sizes Selection */}
+            {availableSizes.length > 0 && (
+              <div className="mb-4">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Ukuran (Size)</label>
+                <div className="flex flex-wrap gap-2">
+                  {availableSizes.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setSelectedSize(size)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                        selectedSize === size
+                          ? `${theme.primary} text-white border-transparent shadow-sm`
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-350'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Colors Selection */}
+            {availableColors.length > 0 && (
+              <div className="mb-6">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Pilihan Warna</label>
+                <div className="flex flex-wrap gap-2">
+                  {availableColors.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setSelectedColor(color)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                        selectedColor === color
+                          ? `${theme.primary} text-white border-transparent shadow-sm`
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-350'
+                      }`}
+                    >
+                      {color}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              {isBeliDirectMode ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const detail = `(Ukuran: ${selectedSize}, Warna: ${selectedColor})`;
+                    const text = `Halo admin ${store.name}, saya mau pesan langsung: *${optionsProduct.name}* ${detail} (Harga: Rp ${optionsProduct.price.toLocaleString('id-ID')})`;
+                    const url = `https://wa.me/${(store.whatsapp || '081234567890').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`;
+                    window.open(url, '_blank');
+                    setShowOptionsModal(false);
+                  }}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>⚡ Beli Direct via WhatsApp</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    executeAddToCart(optionsProduct, selectedSize, selectedColor);
+                    setShowOptionsModal(false);
+                  }}
+                  className={`w-full py-3 text-white rounded-xl text-xs font-bold shadow transition-all hover:opacity-90 flex items-center justify-center gap-1.5 cursor-pointer ${theme.primary}`}
+                >
+                  <span>+ Tambahkan ke Keranjang</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

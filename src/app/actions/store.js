@@ -498,7 +498,9 @@ export async function createOrder(storeId, customerName, customerPhone, serviceT
     const orderItems = items.map((item) => ({
       order_id: order.id,
       product_id: item.id,
-      product_name: item.name,
+      product_name: item.selectedSize || item.selectedColor
+        ? `${item.name} (${[item.selectedSize ? `Ukuran: ${item.selectedSize}` : '', item.selectedColor ? `Warna: ${item.selectedColor}` : ''].filter(Boolean).join(', ')})`
+        : item.name,
       price: item.price,
       quantity: item.quantity
     }));
