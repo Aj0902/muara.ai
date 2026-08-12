@@ -4,6 +4,7 @@ import { useState, useTransition, useRef } from 'react';
 import { updateStoreProfile, importProfileFromCSV } from '../../actions/store';
 import { parseCSVFile, downloadCSVTemplate } from '@/lib/csvParser';
 import { compressImage } from '@/lib/imageCompressor';
+import jsQR from 'jsqr';
 
 export default function ProfileForm({ store }) {
   const [isPending, startTransition] = useTransition();
@@ -28,6 +29,16 @@ export default function ProfileForm({ store }) {
       console.error(e);
     }
   }
+
+  // State-state baru untuk QRIS dinamis dan bank kustom
+  const [qrisDataState, setQrisDataState] = useState(qrisData);
+  const [qrisDecodeMessage, setQrisDecodeMessage] = useState({ type: '', text: '' });
+  const qrisFileInputRef = useRef(null);
+
+  const standardBanks = ['BCA', 'Mandiri', 'BRI', 'BNI', 'BSI', 'DANA', 'OVO', 'GoPay', 'ShopeePay', 'LinkAja'];
+  const isStandard = bankName ? standardBanks.includes(bankName) : true;
+  const [selectedBankSelect, setSelectedBankSelect] = useState(bankName ? (isStandard ? bankName : 'Lainnya') : 'BCA');
+  const [customBankName, setCustomBankName] = useState(isStandard ? '' : bankName);
 
   // Cloudinary Upload states
   const [logoUrl, setLogoUrl] = useState(store?.logo_url || '');
@@ -113,6 +124,53 @@ export default function ProfileForm({ store }) {
     }
   };
 
+  const handleQRISImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setQrisDecodeMessage({ type: 'info', text: 'Sedang membaca gambar QRIS...' });
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const image = new Image();
+      image.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = image.width;
+          canvas.height = image.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(image, 0, 0);
+
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const decoded = jsQR(imageData.data, imageData.width, imageData.height);
+
+          if (decoded && decoded.data) {
+            const rawQRIS = decoded.data.trim();
+            if (rawQRIS.startsWith('000201')) {
+              setQrisDataState(rawQRIS);
+              setQrisDecodeMessage({ type: 'success', text: '✓ QRIS berhasil dideteksi dan didekode otomatis!' });
+            } else {
+              setQrisDecodeMessage({
+                type: 'error',
+                text: 'Gambar memiliki QR code, tetapi bukan format QRIS standar (tidak diawali "000201").'
+              });
+            }
+          } else {
+            setQrisDecodeMessage({
+              type: 'error',
+              text: 'Gagal mendeteksi QR code. Pastikan gambar QRIS Anda jelas, terang, dan tidak terpotong.'
+            });
+          }
+        } catch (err) {
+          console.error('QR Decode Error:', err);
+          setQrisDecodeMessage({ type: 'error', text: 'Gagal memproses gambar: ' + err.message });
+        }
+      };
+      image.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage({ type: '', text: '' });
@@ -123,10 +181,15 @@ export default function ProfileForm({ store }) {
     if (aboutUrl) formData.set('about_url', aboutUrl);
 
     if (store?.category === 'fashion') {
+      let finalBankName = formData.get('bank_name_select') || '';
+      if (finalBankName === 'Lainnya') {
+        finalBankName = formData.get('bank_name_custom') || '';
+      }
+
       const facebookJson = JSON.stringify({
         facebookUrl: formData.get('facebook') || '',
         qrisData: formData.get('qris_data') || '',
-        bankName: formData.get('bank_name') || '',
+        bankName: finalBankName,
         bankAccountNumber: formData.get('bank_account_number') || '',
         bankAccountName: formData.get('bank_account_name') || ''
       });
@@ -487,25 +550,66 @@ export default function ProfileForm({ store }) {
               4. Pengaturan Pembayaran (Fashion Category)
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">String QRIS Statis Toko (Mulai dari 000201...)</label>
+              
+              {/* QRIS Upload & String Field */}
+              <div className="md:col-span-2 space-y-3">
+                <label className="block text-xs font-semibold text-slate-500 mb-1">String QRIS Statis Toko</label>
+                
+                {/* File Uploader for QRIS image decode */}
+                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={qrisFileInputRef}
+                    onChange={handleQRISImageSelect}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => qrisFileInputRef.current?.click()}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    📷 Unggah Foto QRIS Toko
+                  </button>
+                  <span className="text-[11px] text-slate-400">
+                    Sistem akan otomatis mendeteksi & menerjemahkan gambar QRIS Anda menjadi teks di bawah.
+                  </span>
+                </div>
+
+                {qrisDecodeMessage.text && (
+                  <div
+                    className={`p-3 rounded-xl text-xs font-semibold border ${
+                      qrisDecodeMessage.type === 'success'
+                        ? 'bg-emerald-50 border-emerald-100 text-emerald-600'
+                        : qrisDecodeMessage.type === 'error'
+                        ? 'bg-red-50 border-red-100 text-red-600'
+                        : 'bg-blue-50 border-blue-100 text-blue-600'
+                    }`}
+                  >
+                    {qrisDecodeMessage.text}
+                  </div>
+                )}
+
                 <textarea
                   name="qris_data"
                   rows="3"
-                  defaultValue={qrisData}
-                  placeholder="Masukkan data string QRIS statis Anda (dapatkan dengan men-decode gambar QRIS Anda di QRIS decoder)..."
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-xs font-mono"
+                  value={qrisDataState}
+                  onChange={(e) => setQrisDataState(e.target.value)}
+                  placeholder="Masukkan data string QRIS statis Anda (atau unggah gambarnya di atas agar terisi otomatis)..."
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-xs font-mono bg-slate-50"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  💡 Tips: String QRIS biasanya diawali dengan &ldquo;000201010211&rdquo;. Nominal dinamis akan dihitung otomatis dari string ini.
+                <p className="text-[10px] text-slate-400">
+                  💡 Tips: String QRIS biasanya diawali dengan &ldquo;000201010211&rdquo;. Nominal dinamis akan dihitung otomatis dari string ini saat pembeli checkout.
                 </p>
               </div>
 
+              {/* Bank & E-Money Select Dropdown */}
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Nama Bank</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Bank / Dompet Digital (E-Money)</label>
                 <select
-                  name="bank_name"
-                  defaultValue={bankName || 'BCA'}
+                  name="bank_name_select"
+                  value={selectedBankSelect}
+                  onChange={(e) => setSelectedBankSelect(e.target.value)}
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm bg-white"
                 >
                   <option value="BCA">Bank BCA</option>
@@ -513,26 +617,52 @@ export default function ProfileForm({ store }) {
                   <option value="BRI">Bank BRI</option>
                   <option value="BNI">Bank BNI</option>
                   <option value="BSI">Bank BSI</option>
+                  <option value="DANA">DANA (E-Money)</option>
+                  <option value="OVO">OVO (E-Money)</option>
+                  <option value="GoPay">GoPay (E-Money)</option>
+                  <option value="ShopeePay">ShopeePay (E-Money)</option>
+                  <option value="LinkAja">LinkAja (E-Money)</option>
+                  <option value="Lainnya">Lainnya (Tulis Sendiri)</option>
                 </select>
               </div>
 
+              {/* Custom Bank Name Input */}
+              {selectedBankSelect === 'Lainnya' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Tulis Nama Bank/E-Money Baru</label>
+                  <input
+                    type="text"
+                    name="bank_name_custom"
+                    value={customBankName}
+                    onChange={(e) => setCustomBankName(e.target.value)}
+                    required
+                    placeholder="Contoh: Bank Jago, Allo Bank, dll."
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
+                  />
+                </div>
+              ) : (
+                <div className="hidden sm:block"></div>
+              )}
+
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Nomor Rekening</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Nomor Rekening / No. HP E-Money</label>
                 <input
                   type="text"
                   name="bank_account_number"
                   defaultValue={bankAccountNumber}
-                  placeholder="Contoh: 1234567890"
+                  required
+                  placeholder="Contoh: 1234567890 atau 0812XXXXXXXX"
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Nama Pemilik Rekening (Atas Nama)</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Nama Pemilik Akun / Atas Nama</label>
                 <input
                   type="text"
                   name="bank_account_name"
                   defaultValue={bankAccountName}
+                  required
                   placeholder="Contoh: Batik Trusmi Official"
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
                 />

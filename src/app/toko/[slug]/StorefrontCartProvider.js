@@ -835,14 +835,19 @@ export default function StorefrontCartProvider({ children, store }) {
                         onChange={(e) => setBankOption(e.target.value)}
                         className="w-full bg-transparent text-xs text-slate-800 dark:text-white focus:outline-none"
                       >
-                        {storeBankName && storeBankAccountNumber && (
-                          <option value={`${storeBankName} - ${storeBankAccountNumber} (a.n ${storeBankAccountName})`}>
-                            Bank {storeBankName}: {storeBankAccountNumber} (a.n {storeBankAccountName})
-                          </option>
-                        )}
+                        {storeBankName && storeBankAccountNumber && (() => {
+                          const isStoreEMoney = /^(dana|ovo|gopay|shopeepay|linkaja)/i.test(storeBankName);
+                          return (
+                            <option value={`${storeBankName} - ${storeBankAccountNumber} (a.n ${storeBankAccountName})`}>
+                              {isStoreEMoney ? '' : 'Bank '}{storeBankName}: {storeBankAccountNumber} (a.n {storeBankAccountName})
+                            </option>
+                          );
+                        })()}
                         <option value="BCA - 1234567890 (a.n Batik Trusmi Official)">Bank BCA: 1234567890 (a.n Batik Trusmi)</option>
                         <option value="Mandiri - 9876543210 (a.n Batik Trusmi Official)">Bank Mandiri: 9876543210 (a.n Batik Trusmi)</option>
                         <option value="BRI - 5555444433 (a.n Batik Trusmi Official)">Bank BRI: 5555444433 (a.n Batik Trusmi)</option>
+                        <option value="DANA - 081234567890 (a.n Batik Trusmi Official)">DANA: 081234567890 (a.n Batik Trusmi)</option>
+                        <option value="OVO - 089876543210 (a.n Batik Trusmi Official)">OVO: 089876543210 (a.n Batik Trusmi)</option>
                       </select>
                     </div>
                   )}
@@ -1266,13 +1271,18 @@ export default function StorefrontCartProvider({ children, store }) {
             <p className="text-xs text-slate-400 mb-4">No. Invoice: <span className="font-mono font-bold text-orange-600">{generatedInvoice}</span></p>
             
             {/* Show QRIS or Bank Detail based on selection */}
-            {((store.category || 'kuliner').toLowerCase() === 'fashion' && paymentMethod === 'bank') ? (
-              <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl mb-4 text-left border border-slate-200 dark:border-slate-800">
-                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Transfer Ke Rekening Toko:</p>
-                <p className="text-xs font-bold text-slate-800 dark:text-white">{bankOption}</p>
-                <p className="text-[9px] text-slate-400 mt-2">Silakan transfer nominal pas sesuai dengan total tagihan di bawah.</p>
-              </div>
-            ) : (
+            {((store.category || 'kuliner').toLowerCase() === 'fashion' && paymentMethod === 'bank') ? (() => {
+              const isEMoney = /^(dana|ovo|gopay|shopeepay|linkaja)/i.test(bankOption);
+              return (
+                <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl mb-4 text-left border border-slate-200 dark:border-slate-800">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">
+                    {isEMoney ? 'Transfer Ke E-Money Toko:' : 'Transfer Ke Rekening Toko:'}
+                  </p>
+                  <p className="text-xs font-bold text-slate-800 dark:text-white">{bankOption}</p>
+                  <p className="text-[9px] text-slate-400 mt-2">Silakan transfer nominal pas sesuai dengan total tagihan di bawah.</p>
+                </div>
+              );
+            })() : (
               /* QRIS Section */
               <div className="w-44 h-44 mx-auto bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-center p-3 mb-4">
                 {(() => {
