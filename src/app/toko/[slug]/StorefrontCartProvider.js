@@ -768,30 +768,56 @@ export default function StorefrontCartProvider({ children, store }) {
 
                     {msg.status !== 'paid' ? (
                       <div className="space-y-3">
-                        {msg.paymentMethod === 'bank' ? (
-                          <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200/50 dark:border-slate-850 text-xs space-y-1">
-                            <p className="font-bold text-[9px] text-slate-450 uppercase">
-                              {/^(dana|ovo|gopay|shopeepay|linkaja)/i.test(msg.bankOption) ? 'Transfer Dompet Digital:' : 'Transfer Rekening Bank:'}
-                            </p>
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="font-bold text-slate-800 dark:text-white truncate">{msg.bankOption}</p>
-                              {(() => {
-                                const accNo = msg.bankOption.split(' - ')[1]?.split(' ')[0] || '';
-                                if (!accNo) return null;
-                                return (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleCopyToClipboard(accNo, `acc-${msg.id}`)}
-                                    className="text-[8.5px] px-1.5 py-0.5 bg-white hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 text-orange-600 dark:text-orange-450 border border-slate-200 dark:border-slate-800 rounded font-bold shrink-0 transition-all cursor-pointer"
-                                  >
-                                    {copiedStates[`acc-${msg.id}`] ? '✓ Tersalin' : 'Salin Rekening'}
-                                  </button>
-                                );
-                              })()}
+                        {msg.paymentMethod === 'bank' ? (() => {
+                          const parts = msg.bankOption.split(' - ');
+                          const provider = parts[0] || '';
+                          const remaining = parts[1] || '';
+                          const number = remaining.split(' (a.n ')[0] || '';
+                          const holderName = remaining.split(' (a.n ')[1]?.replace(')', '') || '';
+                          const isEMoney = /^(dana|ovo|gopay|shopeepay|linkaja)/i.test(provider);
+
+                          return (
+                            <div className="bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-200/50 dark:border-slate-850 text-xs space-y-2.5">
+                              <p className="font-bold text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                                {isEMoney ? 'Tujuan Transfer Dompet Digital:' : 'Tujuan Transfer Rekening Bank:'}
+                              </p>
+                              
+                              <div className="flex justify-between items-center border-b border-slate-250/20 dark:border-slate-800/40 pb-1.5">
+                                <div>
+                                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold ${
+                                    isEMoney ? 'bg-orange-50 text-orange-600 border border-orange-200/50 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-900/30' : 'bg-blue-50 text-blue-600 border border-blue-200/50 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/30'
+                                  }`}>
+                                    {isEMoney ? 'E-Money' : 'Bank'}
+                                  </span>
+                                  <h4 className="font-bold text-sm text-slate-800 dark:text-white mt-1">{provider}</h4>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1">
+                                <p className="text-[10px] text-slate-400">Nomor Rekening / No. HP:</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-mono font-bold text-sm text-slate-800 dark:text-white tracking-wide">{number || msg.bankOption}</p>
+                                  {number && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyToClipboard(number, `acc-${msg.id}`)}
+                                      className="text-[9px] px-2 py-0.5 bg-white hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 text-orange-600 dark:text-orange-400 border border-slate-200 dark:border-slate-800 rounded font-bold transition-all cursor-pointer shadow-sm"
+                                    >
+                                      {copiedStates[`acc-${msg.id}`] ? '✓ Tersalin' : 'Salin'}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {holderName && (
+                                <div className="pt-1.5 border-t border-slate-250/20 dark:border-slate-800/40">
+                                  <p className="text-[10px] text-slate-400">Atas Nama Pemilik:</p>
+                                  <p className="font-bold text-xs text-slate-700 dark:text-slate-350 mt-0.5">{holderName}</p>
+                                </div>
+                              )}
                             </div>
-                            <p className="text-[9px] text-slate-400">Silakan transfer nominal pas sesuai total di bawah.</p>
-                          </div>
-                        ) : (
+                          );
+                        })() : (
                           <div className="text-center space-y-2">
                             <div className="w-36 h-36 mx-auto bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl flex items-center justify-center p-2">
                               {(() => {
