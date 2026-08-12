@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useRef } from 'react';
+import { useState, useTransition, useRef, useEffect } from 'react';
 import { updateStoreProfile, importProfileFromCSV } from '../../actions/store';
 import { parseCSVFile, downloadCSVTemplate } from '@/lib/csvParser';
 import { compressImage } from '@/lib/imageCompressor';
@@ -57,6 +57,75 @@ export default function ProfileForm({ store }) {
   const [newAccProviderCustom, setNewAccProviderCustom] = useState('');
   const [newAccNumber, setNewAccNumber] = useState('');
   const [newAccName, setNewAccName] = useState('');
+
+  // Parsing Alamat untuk RajaOngkir
+  const rawAddress = store?.address || '';
+  const addressParts = rawAddress.split(' | ');
+  const initialPhysicalAddress = addressParts[0] || '';
+  const initialCityId = addressParts[1] || '';
+  const initialProvinceId = addressParts[3] || '';
+
+  const [physicalAddress, setPhysicalAddress] = useState(initialPhysicalAddress);
+  const [originProvinceId, setOriginProvinceId] = useState(initialProvinceId);
+  const [originCityId, setOriginCityId] = useState(initialCityId);
+  const [provinces, setProvinces] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+
+  // Helper function untuk memuat kota berdasarkan provinsi
+  const fetchCitiesForProvince = async (provId) => {
+    if (!provId) {
+      setCities([]);
+      return;
+    }
+    setLoadingCities(true);
+    try {
+      const res = await fetch(`/api/rajaongkir?type=cities&provinceId=${provId}`);
+      const data = await res.json();
+      if (data.rajaongkir && data.rajaongkir.results) {
+        setCities(data.rajaongkir.results);
+      }
+    } catch (err) {
+      console.error('Gagal memuat kota:', err);
+    } finally {
+      setLoadingCities(false);
+    }
+  };
+
+  useEffect(() => {
+    const initData = async () => {
+      setLoadingProvinces(true);
+      try {
+        const res = await fetch('/api/rajaongkir?type=provinces');
+        const data = await res.json();
+        if (data.rajaongkir && data.rajaongkir.results) {
+          setProvinces(data.rajaongkir.results);
+        }
+      } catch (err) {
+        console.error('Gagal memuat provinsi:', err);
+      } finally {
+        setLoadingProvinces(false);
+      }
+
+      // Muat kota awal jika id provinsi asal sudah ada dari data profil
+      if (initialProvinceId) {
+        setLoadingCities(true);
+        try {
+          const res = await fetch(`/api/rajaongkir?type=cities&provinceId=${initialProvinceId}`);
+          const data = await res.json();
+          if (data.rajaongkir && data.rajaongkir.results) {
+            setCities(data.rajaongkir.results);
+          }
+        } catch (err) {
+          console.error('Gagal memuat kota awal:', err);
+        } finally {
+          setLoadingCities(false);
+        }
+      }
+    };
+    initData();
+  }, []);
 
   const handleAddBankAccount = (e) => {
     e.preventDefault();
@@ -223,6 +292,26 @@ export default function ProfileForm({ store }) {
     if (logoUrl) formData.set('logo_url', logoUrl);
     if (heroUrl) formData.set('hero_url', heroUrl);
     if (aboutUrl) formData.set('about_url', aboutUrl);
+
+    // Format address dengan metadata RajaOngkir
+    const selectedProvObj = provinces.find(p => p.province_id === originProvinceId);
+    const selectedCityObj = cities.find(c => c.city_id === originCityId);
+    const provName = selectedProvObj ? selectedProvObj.province : '';
+    const cityName = selectedCityObj ? selectedCityObj.city_name : '';
+
+    const rawPhysical = formData.get('physical_address')?.trim() || '';
+    if (originCityId && originProvinceId) {
+      const finalAddress = [
+        rawPhysical,
+        originCityId,
+        cityName,
+        originProvinceId,
+        provName
+      ].join(' | ');
+      formData.set('address', finalAddress);
+    } else {
+      formData.set('address', rawPhysical);
+    }
 
     if (store?.category === 'fashion') {
       const facebookJson = JSON.stringify({
@@ -453,15 +542,60 @@ export default function ProfileForm({ store }) {
             2. Lokasi & Operasional
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-slate-500 mb-1.5">Alamat Lengkap</label>
-              <textarea
-                name="address"
-                rows="2"
-                defaultValue={store?.address}
-                placeholder="Alamat fisik warung/toko Anda..."
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm resize-none"
-              />
+            <div className="md:col-span-2 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Alamat Fisik (Nama Jalan, No. Rumah, RT/RW)</label>
+                <textarea
+                  name="physical_address"
+                  rows="2"
+                  value={physicalAddress}
+                  onChange={(e) => setPhysicalAddress(e.target.value)}
+                  placeholder="Alamat fisik warung/toko Anda..."
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Provinsi Asal Pengiriman (RajaOngkir)</label>
+                  <select
+                    value={originProvinceId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setOriginProvinceId(val);
+                      setOriginCityId('');
+                      fetchCitiesForProvince(val);
+                    }}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm bg-white dark:bg-slate-900"
+                  >
+                    <option value="">-- Pilih Provinsi --</option>
+                    {provinces.map((prov) => (
+                      <option key={prov.province_id} value={prov.province_id}>
+                        {prov.province}
+                      </option>
+                    ))}
+                  </select>
+                  {loadingProvinces && <p className="text-[10px] text-amber-600 animate-pulse mt-1">⏳ Memuat provinsi...</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Kota/Kabupaten Asal Pengiriman (RajaOngkir)</label>
+                  <select
+                    value={originCityId}
+                    onChange={(e) => setOriginCityId(e.target.value)}
+                    disabled={!originProvinceId}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm bg-white dark:bg-slate-900 disabled:opacity-50"
+                  >
+                    <option value="">-- Pilih Kota/Kabupaten --</option>
+                    {cities.map((city) => (
+                      <option key={city.city_id} value={city.city_id}>
+                        {city.type} {city.city_name}
+                      </option>
+                    ))}
+                  </select>
+                  {loadingCities && <p className="text-[10px] text-amber-600 animate-pulse mt-1">⏳ Memuat kota...</p>}
+                </div>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1.5">Link Google Maps (URL Share)</label>

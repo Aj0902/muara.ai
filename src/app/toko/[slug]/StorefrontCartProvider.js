@@ -218,8 +218,8 @@ export default function StorefrontCartProvider({ children, store }) {
   );
   const [uploadedProofUrl, setUploadedProofUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [courier, setCourier] = useState('JNE - Reguler (Rp 12.000)');
-  const [ongkirPrice, setOngkirPrice] = useState(12000);
+  const [courier, setCourier] = useState('JNE');
+  const [ongkirPrice, setOngkirPrice] = useState(0);
   const [kota, setKota] = useState('');
 
   const [copiedStates, setCopiedStates] = useState({});
@@ -231,6 +231,135 @@ export default function StorefrontCartProvider({ children, store }) {
         setCopiedStates(prev => ({ ...prev, [key]: false }));
       }, 2000);
     }
+  };
+
+  // Parse store origin dari store.address
+  const rawStoreAddress = store?.address || '';
+  const storeAddressParts = rawStoreAddress.split(' | ');
+  const storePhysicalAddress = storeAddressParts[0] || rawStoreAddress;
+  const storeOriginCityId = storeAddressParts[1] || '109'; // Default ke Cirebon (109)
+  const storeOriginCityName = storeAddressParts[2] || 'Cirebon';
+
+  // State pencarian kota/provinsi tujuan & hitung ongkir RajaOngkir
+  const [destProvinceId, setDestProvinceId] = useState('');
+  const [destCityId, setDestCityId] = useState('');
+  const [custDetailedAddress, setCustDetailedAddress] = useState('');
+  const [provincesList, setProvincesList] = useState([]);
+  const [citiesList, setCitiesList] = useState([]);
+  const [shippingServices, setShippingServices] = useState([]);
+  const [selectedServiceCode, setSelectedServiceCode] = useState('');
+  const [isLoadingOngkir, setIsLoadingOngkir] = useState(false);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+
+  // Fetch daftar provinsi saat keranjang terbuka
+  useEffect(() => {
+    if (cartOpen && provincesList.length === 0) {
+      const fetchProvinces = async () => {
+        setLoadingProvinces(true);
+        try {
+          const res = await fetch('/api/rajaongkir?type=provinces');
+          const data = await res.json();
+          if (data.rajaongkir && data.rajaongkir.results) {
+            setProvincesList(data.rajaongkir.results);
+          }
+        } catch (err) {
+          console.error('Error fetching provinces:', err);
+        } finally {
+          setLoadingProvinces(false);
+        }
+      };
+      fetchProvinces();
+    }
+  }, [cartOpen, provincesList]);
+
+  // Helper function untuk memuat kota tujuan
+  const fetchCitiesForStorefront = async (provId) => {
+    if (!provId) {
+      setCitiesList([]);
+      return;
+    }
+    setLoadingCities(true);
+    try {
+      const res = await fetch(`/api/rajaongkir?type=cities&provinceId=${provId}`);
+      const data = await res.json();
+      if (data.rajaongkir && data.rajaongkir.results) {
+        setCitiesList(data.rajaongkir.results);
+      }
+    } catch (err) {
+      console.error('Error fetching cities:', err);
+    } finally {
+      setLoadingCities(false);
+    }
+  };
+
+  // Helper function untuk menghitung ongkir
+  const calculateShippingCost = async (cityId, courierName) => {
+    if (!cityId || !courierName) {
+      setShippingServices([]);
+      setSelectedServiceCode('');
+      return;
+    }
+    setIsLoadingOngkir(true);
+    try {
+      const courierCode = courierName.toLowerCase().includes('jne') 
+        ? 'jne' 
+        : courierName.toLowerCase().includes('pos') 
+        ? 'pos' 
+        : 'jnt';
+
+      const res = await fetch('/api/rajaongkir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          origin: storeOriginCityId,
+          destination: cityId,
+          weight: 1000,
+          courier: courierCode
+        })
+      });
+
+      const data = await res.json();
+      if (data.rajaongkir && data.rajaongkir.results && data.rajaongkir.results[0]) {
+        const result = data.rajaongkir.results[0];
+        const services = result.costs.map(c => ({
+          service: c.service,
+          description: c.description,
+          cost: c.cost[0]?.value || 0,
+          etd: c.cost[0]?.etd || ''
+        }));
+
+        setShippingServices(services);
+        if (services.length > 0) {
+          const defaultService = services[0];
+          setSelectedServiceCode(defaultService.service);
+          setOngkirPrice(defaultService.cost);
+        } else {
+          setOngkirPrice(0);
+        }
+      }
+    } catch (err) {
+      console.error('Error calculating shipping cost:', err);
+    } finally {
+      setIsLoadingOngkir(false);
+    }
+  };
+
+  // Helper function untuk menyinkronkan alamat pengiriman gabungan
+  const updateCombinedAddress = (detailed, provId, cityId, provinces = provincesList, cities = citiesList) => {
+    const selectedProv = provinces.find(p => p.province_id === provId);
+    const selectedCity = cities.find(c => c.city_id === cityId);
+    const provName = selectedProv ? selectedProv.province : '';
+    const cityName = selectedCity ? `${selectedCity.type} ${selectedCity.city_name}` : '';
+
+    const parts = [
+      detailed.trim(),
+      cityName,
+      provName
+    ].filter(Boolean);
+
+    setCustAddress(parts.join(', '));
+    setKota(cityName || '');
   };
 
   // Conversational Cart messages
@@ -594,9 +723,19 @@ export default function StorefrontCartProvider({ children, store }) {
       alert('Silakan pilih nomor meja untuk layanan Makan di Tempat!');
       return;
     }
-    if ((store?.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping' && !custAddress) {
-      alert('Silakan masukkan Alamat Lengkap Pengiriman!');
-      return;
+    if ((store?.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping') {
+      if (!destProvinceId) {
+        alert('Silakan pilih Provinsi Tujuan!');
+        return;
+      }
+      if (!destCityId) {
+        alert('Silakan pilih Kota/Kabupaten Tujuan!');
+        return;
+      }
+      if (!custDetailedAddress.trim()) {
+        alert('Silakan masukkan Alamat Fisik Lengkap Pengiriman!');
+        return;
+      }
     }
 
     startCheckoutTransition(async () => {
@@ -1117,44 +1256,115 @@ export default function StorefrontCartProvider({ children, store }) {
                   {/* Card Terpisah: Alamat Lengkap & Hitung Ongkir (Hanya jika Kirim Kurir) */}
                   {serviceType === 'shipping' && (
                     <div className="bg-slate-50 dark:bg-slate-950 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">📦 DETAIL PENGIRIMAN & ONGKIR</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">📦 DETAIL PENGIRIMAN & ONGKIR (RajaOngkir)</p>
+                      
+                      {/* Provinsi Tujuan */}
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1">ALAMAT LENGKAP PENGIRIMAN *</label>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">PROVINSI TUJUAN *</label>
+                        <select
+                          required
+                          value={destProvinceId}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setDestProvinceId(val);
+                            setDestCityId('');
+                            fetchCitiesForStorefront(val);
+                            updateCombinedAddress(custDetailedAddress, val, '');
+                          }}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
+                        >
+                          <option value="">-- Pilih Provinsi --</option>
+                          {provincesList.map((p) => (
+                            <option key={p.province_id} value={p.province_id}>{p.province}</option>
+                          ))}
+                        </select>
+                        {loadingProvinces && <p className="text-[9px] text-amber-500 animate-pulse mt-0.5">⏳ Memuat daftar provinsi...</p>}
+                      </div>
+
+                      {/* Kota Tujuan */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">KOTA / KABUPATEN TUJUAN *</label>
+                        <select
+                          required
+                          disabled={!destProvinceId}
+                          value={destCityId}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setDestCityId(val);
+                            calculateShippingCost(val, courier);
+                            updateCombinedAddress(custDetailedAddress, destProvinceId, val);
+                          }}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500 disabled:opacity-50"
+                        >
+                          <option value="">-- Pilih Kota/Kabupaten --</option>
+                          {citiesList.map((c) => (
+                            <option key={c.city_id} value={c.city_id}>{c.type} {c.city_name}</option>
+                          ))}
+                        </select>
+                        {loadingCities && <p className="text-[9px] text-amber-500 animate-pulse mt-0.5">⏳ Memuat daftar kota...</p>}
+                      </div>
+
+                      {/* Alamat Fisik Lengkap */}
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">ALAMAT FISIK LENGKAP (JALAN, NO. RUMAH, RT/RW) *</label>
                         <textarea
                           rows={2}
                           required
-                          placeholder="Masukkan nama jalan, nomor rumah, RT/RW, Kecamatan..."
-                          value={custAddress}
-                          onChange={(e) => setCustAddress(e.target.value)}
+                          placeholder="Masukkan nama jalan, nomor rumah, RT/RW, desa/kelurahan, kecamatan..."
+                          value={custDetailedAddress}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCustDetailedAddress(val);
+                            updateCombinedAddress(val, destProvinceId, destCityId);
+                          }}
                           className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
                         />
                       </div>
+
                       <div className="grid grid-cols-2 gap-2">
+                        {/* Pilihan Kurir */}
                         <div>
-                          <label className="block text-[9px] font-bold text-slate-500 mb-1">KOTA TUJUAN</label>
-                          <input
-                            type="text"
-                            value={kota}
-                            onChange={(e) => setKota(e.target.value)}
-                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] font-bold text-slate-500 mb-1">RAJAONGKIR</label>
+                          <label className="block text-[10px] font-bold text-slate-500 mb-1">KURIR</label>
                           <select
                             value={courier}
                             onChange={(e) => {
-                              setCourier(e.target.value);
-                              if (e.target.value.includes('JNE')) setOngkirPrice(12000);
-                              if (e.target.value.includes('J&T')) setOngkirPrice(15000);
-                              if (e.target.value.includes('POS')) setOngkirPrice(10000);
+                              const val = e.target.value;
+                              setCourier(val);
+                              calculateShippingCost(destCityId, val);
                             }}
-                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-2 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
+                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
                           >
-                            <option value="JNE - Reguler (Rp 12.000)">JNE Reguler - Rp 12.000</option>
-                            <option value="J&T - EZ (Rp 15.000)">J&T EZ - Rp 15.000</option>
-                            <option value="POS - Kilat (Rp 10.000)">POS Kilat - Rp 10.000</option>
+                            <option value="JNE">JNE Express</option>
+                            <option value="J&T">J&T Express</option>
+                            <option value="POS">POS Indonesia</option>
                           </select>
+                        </div>
+
+                        {/* Pilihan Layanan Kurir */}
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 mb-1">LAYANAN</label>
+                          <select
+                            disabled={shippingServices.length === 0 || isLoadingOngkir}
+                            value={selectedServiceCode}
+                            onChange={(e) => {
+                              const srvCode = e.target.value;
+                              setSelectedServiceCode(srvCode);
+                              const srv = shippingServices.find(s => s.service === srvCode);
+                              if (srv) setOngkirPrice(srv.cost);
+                            }}
+                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500 disabled:opacity-50"
+                          >
+                            {shippingServices.length === 0 ? (
+                              <option value="">-- Pilih Layanan --</option>
+                            ) : (
+                              shippingServices.map((s, idx) => (
+                                <option key={idx} value={s.service}>
+                                  {s.service} (Rp {s.cost.toLocaleString('id-ID')}) {s.etd ? `[${s.etd}]` : ''}
+                                </option>
+                              ))
+                            )}
+                          </select>
+                          {isLoadingOngkir && <p className="text-[9px] text-amber-500 animate-pulse mt-0.5">⏳ Menghitung ongkir...</p>}
                         </div>
                       </div>
                     </div>
