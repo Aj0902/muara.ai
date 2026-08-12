@@ -2,7 +2,7 @@
 
 import { useState, useEffect, createContext, useContext, useTransition } from 'react';
 import { useStorefrontTheme } from './StorefrontThemeWrapper';
-import { createSpecialOrder, createOrder, getOccupiedTables } from '@/app/actions/store';
+import { createSpecialOrder, createOrder, getOccupiedTables, updateOrderProof } from '@/app/actions/store';
 
 let uniqueIdCounter = 0;
 function generateUniqueId(prefix = 'id') {
@@ -100,6 +100,7 @@ export default function StorefrontCartProvider({ children, store }) {
   // Mock Invoice & QRIS Popup
   const [showQRIS, setShowQRIS] = useState(false);
   const [generatedInvoice, setGeneratedInvoice] = useState('');
+  const [createdOrderId, setCreatedOrderId] = useState('');
 
   // Dedicated Invoice Tracking Form states
   const [showCartTrackInput, setShowCartTrackInput] = useState(false);
@@ -461,6 +462,7 @@ export default function StorefrontCartProvider({ children, store }) {
         alert(res.error);
       } else {
         setGeneratedInvoice(res.invoiceNumber);
+        if (res.orderId) setCreatedOrderId(res.orderId);
         setShowQRIS(true);
 
         // AI reacts inside cart drawer
@@ -741,9 +743,10 @@ export default function StorefrontCartProvider({ children, store }) {
                     </div>
                   )}
 
-                  {/* Address Inputs (Only if shipping is chosen) */}
+                  {/* Card Terpisah: Alamat Lengkap & Hitung Ongkir (Hanya jika Kirim Kurir) */}
                   {serviceType === 'shipping' && (
-                    <div className="space-y-3">
+                    <div className="bg-slate-50 dark:bg-slate-950 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">📦 DETAIL PENGIRIMAN & ONGKIR</p>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1">ALAMAT LENGKAP PENGIRIMAN *</label>
                         <textarea
@@ -752,7 +755,7 @@ export default function StorefrontCartProvider({ children, store }) {
                           placeholder="Masukkan nama jalan, nomor rumah, RT/RW, Kecamatan..."
                           value={custAddress}
                           onChange={(e) => setCustAddress(e.target.value)}
-                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-2">
@@ -762,11 +765,11 @@ export default function StorefrontCartProvider({ children, store }) {
                             type="text"
                             value={kota}
                             onChange={(e) => setKota(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
+                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
                           />
                         </div>
                         <div>
-                          <label className="block text-[9px] font-bold text-slate-500 mb-1">ONGKIR (RAJAONGKIR)</label>
+                          <label className="block text-[9px] font-bold text-slate-500 mb-1">RAJAONGKIR</label>
                           <select
                             value={courier}
                             onChange={(e) => {
@@ -775,7 +778,7 @@ export default function StorefrontCartProvider({ children, store }) {
                               if (e.target.value.includes('J&T')) setOngkirPrice(15000);
                               if (e.target.value.includes('POS')) setOngkirPrice(10000);
                             }}
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2 py-2 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
+                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-2 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
                           >
                             <option value="JNE - Reguler (Rp 12.000)">JNE Reguler - Rp 12.000</option>
                             <option value="J&T - EZ (Rp 15.000)">J&T EZ - Rp 15.000</option>
@@ -861,30 +864,32 @@ export default function StorefrontCartProvider({ children, store }) {
               </div>
 
               {/* Rincian Harga Transparan di Keranjang AI */}
-              {((store.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping') && (
-                <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1 text-xs">
-                  <div className="flex justify-between text-slate-500">
-                    <span>Subtotal Produk:</span>
-                    <span>Rp {cartSubtotal.toLocaleString('id-ID')}</span>
-                  </div>
+              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1 text-xs">
+                <div className="flex justify-between text-slate-500">
+                  <span>Subtotal Produk:</span>
+                  <span>Rp {cartSubtotal.toLocaleString('id-ID')}</span>
+                </div>
+                {((store.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping') && (
                   <div className="flex justify-between text-slate-500">
                     <span>Ongkos Kirim ({courier.split(' - ')[0]}):</span>
                     <span>Rp {ongkirPrice.toLocaleString('id-ID')}</span>
                   </div>
-                  <div className="border-t border-slate-200 dark:border-slate-800 my-1"></div>
-                  <div className="flex justify-between font-bold text-slate-800 dark:text-white">
-                    <span>Total Bayar:</span>
-                    <span>Rp {(cartSubtotal + ongkirPrice).toLocaleString('id-ID')}</span>
-                  </div>
+                )}
+                <div className="border-t border-slate-200 dark:border-slate-800 my-1"></div>
+                <div className="flex justify-between font-bold text-slate-800 dark:text-white text-sm">
+                  <span>TOTAL PEMBAYARAN:</span>
+                  <span className="text-orange-600 dark:text-orange-400">
+                    Rp {(((store.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping') ? (cartSubtotal + ongkirPrice) : cartSubtotal).toLocaleString('id-ID')}
+                  </span>
                 </div>
-              )}
+              </div>
 
               <button
                 type="submit"
                 disabled={isPendingCheckout}
                 className={`w-full text-white py-3 rounded-xl font-bold text-xs transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 shadow-md ${theme.primary}`}
               >
-                <span>{isPendingCheckout ? 'Membuat Pesanan...' : 'Lanjutkan Pesanan (Bayar)'}</span>
+                <span>{isPendingCheckout ? 'Membuat Pesanan...' : 'Lanjutkan Pembayaran'}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
@@ -894,83 +899,83 @@ export default function StorefrontCartProvider({ children, store }) {
 
         </div>
 
-        {/* Suggestion Chips & User input */}
-        <div className="bg-white dark:bg-slate-900 border-t border-slate-200/50 dark:border-slate-800/50 p-4 space-y-4 shrink-0">
-          
-          {showCartTrackInput ? (
-            <form onSubmit={handleCartTrackSubmit} className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-xl border border-amber-200 dark:border-amber-800">
+        {/* Bottom Drawer Footer (Only show Tanya AI & Chips for NON-Fashion categories) */}
+        {(store.category || 'kuliner').toLowerCase() !== 'fashion' && (
+          <div className="bg-white dark:bg-slate-900 border-t border-slate-200/50 dark:border-slate-800/50 p-4 space-y-4 shrink-0">
+            {showCartTrackInput ? (
+              <form onSubmit={handleCartTrackSubmit} className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-xl border border-amber-200 dark:border-amber-800">
+                <input
+                  type="text"
+                  required
+                  placeholder="Ketik No. Invoice (misal: INV-20260805-001)..."
+                  value={cartTrackInvoice}
+                  onChange={(e) => setCartTrackInvoice(e.target.value)}
+                  className="flex-1 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 px-3 py-1.5 rounded-lg text-xs text-slate-800 dark:text-white focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shrink-0 transition-colors"
+                >
+                  Cari 🔍
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCartTrackInput(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs px-1"
+                >
+                  ✕
+                </button>
+              </form>
+            ) : (
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => setShowCartTrackInput(true)}
+                  className="text-[10px] font-semibold px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300 rounded-full transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  📦 Lacak Pesanan
+                </button>
+                <button
+                  onClick={() => setSpecialOrderOpen(true)}
+                  className="text-[10px] font-semibold px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 rounded-full transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  ✨ Pesanan Khusus (Acara)
+                </button>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center text-xs border-b border-slate-100 dark:border-slate-800 pb-2">
+              <span className="text-slate-400 font-semibold uppercase">Total Belanja</span>
+              <span className="text-base font-bold text-slate-800 dark:text-white">
+                Rp {cartSubtotal.toLocaleString('id-ID')}
+              </span>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const input = e.target.elements.cartInput;
+                sendCartMessage(input.value);
+                input.value = '';
+              }}
+              className="flex items-center gap-2 bg-slate-50 dark:bg-slate-950 rounded-full p-1.5 pl-4 border border-slate-200 dark:border-slate-800"
+            >
               <input
                 type="text"
-                required
-                placeholder="Ketik No. Invoice (misal: INV-20260805-001)..."
-                value={cartTrackInvoice}
-                onChange={(e) => setCartTrackInvoice(e.target.value)}
-                className="flex-1 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 px-3 py-1.5 rounded-lg text-xs text-slate-800 dark:text-white focus:outline-none"
+                name="cartInput"
+                placeholder="Tanya Asisten AI Cart..."
+                className="flex-1 bg-transparent text-xs text-slate-800 dark:text-white focus:outline-none"
               />
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shrink-0 transition-colors"
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition-opacity hover:opacity-90 ${theme.primary}`}
               >
-                Cari 🔍
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCartTrackInput(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs px-1"
-              >
-                ✕
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                </svg>
               </button>
             </form>
-          ) : (
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => setShowCartTrackInput(true)}
-                className="text-[10px] font-semibold px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300 rounded-full transition-colors flex items-center gap-1 cursor-pointer"
-              >
-                📦 Lacak Pesanan
-              </button>
-              <button
-                onClick={() => setSpecialOrderOpen(true)}
-                className="text-[10px] font-semibold px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 rounded-full transition-colors flex items-center gap-1 cursor-pointer"
-              >
-                ✨ Pesanan Khusus (Acara)
-              </button>
-            </div>
-          )}
-
-          <div className="flex justify-between items-center text-xs border-b border-slate-100 dark:border-slate-800 pb-2">
-            <span className="text-slate-400 font-semibold uppercase">Total Belanja</span>
-            <span className="text-base font-bold text-slate-800 dark:text-white">
-              Rp {cartSubtotal.toLocaleString('id-ID')}
-            </span>
           </div>
-
-          {/* Conversational input */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const input = e.target.elements.cartInput;
-              sendCartMessage(input.value);
-              input.value = '';
-            }}
-            className="flex items-center gap-2 bg-slate-50 dark:bg-slate-950 rounded-full p-1.5 pl-4 border border-slate-200 dark:border-slate-800"
-          >
-            <input
-              type="text"
-              name="cartInput"
-              placeholder="Tanya Asisten AI Cart..."
-              className="flex-1 bg-transparent text-xs text-slate-800 dark:text-white focus:outline-none"
-            />
-            <button
-              type="submit"
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-white transition-opacity hover:opacity-90 ${theme.primary}`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-              </svg>
-            </button>
-          </form>
-        </div>
+        )}
       </div>
 
       {/* C. FLOATING CHAT WIDGET PANEL (CS AI) */}
@@ -1216,9 +1221,13 @@ export default function StorefrontCartProvider({ children, store }) {
                       if (!file) return;
                       setIsUploading(true);
                       // Simulate Cloudinary Ingestion
-                      setTimeout(() => {
-                        setUploadedProofUrl(`https://res.cloudinary.com/demo/image/upload/v17865/bukti_${file.name}`);
+                      const dummyCloudinaryUrl = `https://res.cloudinary.com/demo/image/upload/v17865/bukti_${file.name}`;
+                      setTimeout(async () => {
+                        setUploadedProofUrl(dummyCloudinaryUrl);
                         setIsUploading(false);
+                        if (createdOrderId) {
+                          await updateOrderProof(createdOrderId, dummyCloudinaryUrl);
+                        }
                       }, 1200);
                     }}
                     className="absolute inset-0 opacity-0 cursor-pointer"

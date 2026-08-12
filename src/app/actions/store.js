@@ -512,7 +512,7 @@ export async function createOrder(storeId, customerName, customerPhone, serviceT
     if (itemsError) throw itemsError;
 
     revalidatePath('/admin/pesanan');
-    return { success: true, invoiceNumber };
+    return { success: true, invoiceNumber, orderId: order.id };
   } catch (err) {
     console.error('Create Order Error:', err);
     return { error: 'Gagal membuat pesanan: ' + err.message };
@@ -681,10 +681,37 @@ export async function importProfileFromCSV(profileRow) {
     if (error) throw error;
 
     revalidatePath('/admin/profile');
-    revalidatePath('/toko/[slug]', 'page');
     return { success: true };
   } catch (err) {
     console.error('Import Profile CSV Error:', err);
-    return { error: 'Gagal mengimpor profil toko: ' + err.message };
+    return { error: 'Gagal memperbarui profil: ' + err.message };
+  }
+}
+
+export async function updateOrderProof(orderId, proofUrl) {
+  if (!orderId || !proofUrl) return { error: 'Order ID dan URL Bukti Bayar wajib!' };
+  try {
+    const { data: order, error: fetchErr } = await supabase
+      .from('orders')
+      .select('notes')
+      .eq('id', orderId)
+      .single();
+
+    if (fetchErr) throw fetchErr;
+
+    const updatedNotes = [order.notes, `Bukti Bayar (Cloudinary): ${proofUrl}`].filter(Boolean).join(' | ');
+
+    const { error: updateErr } = await supabase
+      .from('orders')
+      .update({ notes: updatedNotes, status: 'paid' })
+      .eq('id', orderId);
+
+    if (updateErr) throw updateErr;
+
+    revalidatePath('/admin/pesanan');
+    return { success: true };
+  } catch (err) {
+    console.error('Update Order Proof Error:', err);
+    return { error: 'Gagal memperbarui bukti bayar: ' + err.message };
   }
 }

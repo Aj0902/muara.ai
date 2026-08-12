@@ -376,11 +376,42 @@ export default function StandardOrderManager({ store, initialOrders }) {
                               </div>
 
                               {ord.notes && (
-                                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                                  <h6 className="font-bold text-slate-700 dark:text-slate-350 text-[10px] uppercase tracking-wider">Catatan Pembeli:</h6>
-                                  <p className="text-slate-500 dark:text-slate-400 italic text-[11px] mt-1 whitespace-pre-wrap">
+                                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                                  <h6 className="font-bold text-slate-700 dark:text-slate-350 text-[10px] uppercase tracking-wider">Catatan Pembeli & Detail Bayar:</h6>
+                                  <p className="text-slate-600 dark:text-slate-400 italic text-[11px] whitespace-pre-wrap bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
                                     &ldquo;{ord.notes}&rdquo;
                                   </p>
+
+                                  {/* Detect Cloudinary or Image URL in notes */}
+                                  {ord.notes.includes('cloudinary.com') && (
+                                    <div className="mt-2 p-3 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/50 rounded-2xl">
+                                      <span className="block text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-2">📸 Bukti Transfer (Cloudinary CDN):</span>
+                                      <div className="flex items-center gap-3">
+                                        {/* Image thumbnail */}
+                                        {(() => {
+                                          const urlMatch = ord.notes.match(/https?:\/\/[^\s|]+/);
+                                          const imageUrl = urlMatch ? urlMatch[0] : null;
+                                          return imageUrl ? (
+                                            <a href={imageUrl} target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-xl border border-emerald-300 dark:border-emerald-700">
+                                              <img src={imageUrl} alt="Bukti Pembayaran" className="w-16 h-16 object-cover group-hover:scale-105 transition-transform" />
+                                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[9px] font-bold">Lihat</div>
+                                            </a>
+                                          ) : null;
+                                        })()}
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-300">Foto Bukti Terlampir</p>
+                                          <a
+                                            href={ord.notes.match(/https?:\/\/[^\s|]+/)?.[0]}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 hover:underline truncate block mt-0.5"
+                                          >
+                                            Buka Foto Ukuran Penuh ↗
+                                          </a>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )}
 
