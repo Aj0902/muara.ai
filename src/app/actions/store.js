@@ -1,8 +1,33 @@
 'use server';
 
+import { randomUUID } from 'crypto';
 import { cookies } from 'next/headers';
+
 import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
+
+// Helper to send WA message via WAHA API
+async function sendWhatsApp(to, message) {
+  const url = process.env.WAHA_API_URL;
+  const apiKey = process.env.WAHA_API_KEY;
+  if (!url || !apiKey) {
+    console.warn('WAHA env vars not set, skipping WA notification');
+    return;
+  }
+  try {
+    const res = await fetch(`${url}/api/sendText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({ to, message })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'WAHA request failed');
+    console.log('WhatsApp sent:', data);
+  } catch (e) {
+    console.error('Failed to send WhatsApp:', e);
+  }
+}
+
 
 // Helper untuk mendapatkan store_id dari session cookie
 async function getAuthStoreId() {
@@ -467,34 +492,45 @@ export async function createOrder(storeId, customerName, customerPhone, serviceT
   try {
     const invoiceNumber = `INV-${new Date().getFullYear()}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        store_id: storeId,
-        invoice_number: invoiceNumber,
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        customer_address:
-          serviceType === 'dine_in'
-            ? `Meja ${tableNo}`
-            : notes
-            ? notes
-            : serviceType === 'shipping'
-            ? 'Pengiriman Kurir / Ekspedisi'
-            : serviceType === 'pickup'
-            ? 'Pickup (Ambil di Toko)'
-            : serviceType === 'custom_po'
-            ? 'Pesanan Custom (PO)'
-            : 'Take Away / Delivery',
-        total_amount: totalAmount,
-        status: 'pending',
-        notes: notes
-      })
-      .select()
-      .single();
+      const orderToken = randomUUID();
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          store_id: storeId,
+          order_token: orderToken,
+          invoice_number: invoiceNumber,
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          customer_address:
+            serviceType === 'dine_in'
+              ? `Meja ${tableNo}`
+              : notes
+              ? notes
+              : serviceType === 'shipping'
+              ? 'Pengiriman Kurir / Ekspedisi'
+              : serviceType === 'pickup'
+              ? 'Pickup (Ambil di Toko)'
+              : serviceType === 'custom_po'
+              ? 'Pesanan Custom (PO)'
+              : 'Take Away / Delivery',
+          total_amount: totalAmount,
+          status: 'pending',
+          notes: notes
+        })
+        .select()
+        .single();
 
     if (orderError) throw orderError;
-
+    // Notify UMKM via WhatsApp
+    const { data: storeData, error: storeError } = await supabase
+      .from('stores')
+      .select('whatsapp')
+      .eq('id', storeId)
+      .single();
+    if (!storeError && storeData?.whatsapp) {
+      const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+      await sendWhatsApp(storeData.whatsapp, `Pesanan baru ${invoiceNumber}. Detail: ${baseUrl}/pesanan/kelola/${orderToken}`);
+    }
     const orderItems = items.map((item) => ({
       order_id: order.id,
       product_id: item.id,

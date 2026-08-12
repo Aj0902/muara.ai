@@ -1,0 +1,73 @@
+/* Premium dynamic order page styles */
+.container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  font-family: 'Inter', sans-serif;
+}
+
+.title {
+  font-size: 2rem;
+  text-align: center;
+  margin-bottom: 1rem;
+  color: #2c3e50;
+}
+
+.card {
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #4a90e2;
+}
+
+.itemList {
+  list-style: none;
+  padding-left: 0;
+}
+.itemList li {
+  margin: 0.4rem 0;
+  padding: 0.4rem;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.actionBtn {
+  display: block;
+  width: 100%;
+  padding: 0.8rem;
+  margin-top: 1rem;
+  background: #27ae60;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.actionBtn:hover { background: #219150; }
+
+.actionBtnReject {
+  display: block;
+  width: 100%;
+  padding: 0.8rem;
+  margin-top: 0.5rem;
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.actionBtnReject:hover { background: #c0392b; }
+
+.status-pending { color: #f39c12; font-weight: bold; }
+.status-waiting_payment_proof { color: #e67e22; font-weight: bold; }
+.status-payment_uploaded { color: #9b59b6; font-weight: bold; }
+.status-paid { color: #27ae60; font-weight: bold; }
+.status-cancelled { color: #e74c3c; font-weight: bold; }
