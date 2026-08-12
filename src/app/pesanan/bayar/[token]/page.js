@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import styles from '../../orderPage.module.css';
+import styles from '../../../orderPage.module.css';
 
 export default function CustomerPaymentPage({ params }) {
   const { token } = params;
