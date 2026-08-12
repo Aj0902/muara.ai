@@ -26,22 +26,41 @@ export async function POST(request) {
     if (!phone.startsWith('62')) phone = '62' + phone;
     const chatId = `${phone}@c.us`;
 
-    const res = await fetch(`${url}/api/sendText`, {
+    const payload = {
+      session,
+      chatId,
+      text: message
+    };
+
+    // Attempt 1: Header X-Api-Key
+    let res = await fetch(`${url}/api/sendText`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Api-Key': apiKey
       },
-      body: JSON.stringify({
-        session,
-        chatId,
-        text: message
-      })
+      body: JSON.stringify(payload)
     });
 
-    const resText = await res.text();
+    let resText = await res.text();
     let data;
     try { data = JSON.parse(resText); } catch { data = resText; }
+
+    // Attempt 2: Query param fallback if 401
+    if (res.status === 401) {
+      const res2 = await fetch(`${url}/api/sendText?x-api-key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const resText2 = await res2.text();
+      let data2;
+      try { data2 = JSON.parse(resText2); } catch { data2 = resText2; }
+      if (res2.ok) {
+        res = res2;
+        data = data2;
+      }
+    }
 
     if (!res.ok) {
       return NextResponse.json({
