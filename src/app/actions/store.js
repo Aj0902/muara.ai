@@ -23,7 +23,7 @@ async function sendWhatsApp(to, message) {
   try {
     const res = await fetch(`${url}/api/sendText`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      headers: { 'Content-Type': 'application/json', 'X-Api-Key': apiKey },
       body: JSON.stringify({ session: 'default', chatId, text: message })
     });
     const data = await res.json();
