@@ -136,17 +136,13 @@ export default function StorefrontCartProvider({ children, store }) {
   // Parse QRIS & Bank details dari store.facebook
   const isJsonFacebook = store?.facebook && store.facebook.startsWith('{');
   let storeQrisData = '';
-  let storeBankName = '';
-  let storeBankAccountNumber = '';
-  let storeBankAccountName = '';
+  let storeBankAccounts = [];
 
   if (isJsonFacebook) {
     try {
       const parsed = JSON.parse(store.facebook);
       storeQrisData = parsed.qrisData || '';
-      storeBankName = parsed.bankName || '';
-      storeBankAccountNumber = parsed.bankAccountNumber || '';
-      storeBankAccountName = parsed.bankAccountName || '';
+      storeBankAccounts = parsed.bankAccounts || [];
     } catch (e) {
       console.error(e);
     }
@@ -216,8 +212,8 @@ export default function StorefrontCartProvider({ children, store }) {
   // New R&D Payment & Shipping States
   const [paymentMethod, setPaymentMethod] = useState('qris');
   const [bankOption, setBankOption] = useState(
-    storeBankName && storeBankAccountNumber
-      ? `${storeBankName} - ${storeBankAccountNumber} (a.n ${storeBankAccountName})`
+    storeBankAccounts.length > 0
+      ? `${storeBankAccounts[0].provider} - ${storeBankAccounts[0].number} (a.n ${storeBankAccounts[0].name})`
       : 'BCA - 1234567890 (a.n Batik Trusmi Official)'
   );
   const [uploadedProofUrl, setUploadedProofUrl] = useState('');
@@ -518,6 +514,64 @@ export default function StorefrontCartProvider({ children, store }) {
     });
   };
 
+  const handleCardProofUpload = async (messageId, file) => {
+    const msg = cartMessages.find(m => m.id === messageId);
+    if (!msg) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', `muara_ai/pesanan_${store.id}`);
+
+      // Set status uploading di kartu chat
+      setCartMessages(prev => prev.map(m => m.id === messageId ? { ...m, isUploadingProof: true } : m));
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        throw new Error('Gagal mengunggah bukti pembayaran.');
+      }
+
+      const uploadData = await res.json();
+      if (uploadData.error) {
+        throw new Error(uploadData.error);
+      }
+
+      const cloudinaryUrl = uploadData.url;
+
+      // Update bukti pembayaran di database Supabase via Server Action
+      if (msg.orderId) {
+        await updateOrderProof(msg.orderId, cloudinaryUrl);
+      }
+
+      // Update status kartu pembayaran di chat feed
+      setCartMessages(prev => prev.map(m => m.id === messageId ? { 
+        ...m, 
+        status: 'paid', 
+        proofUrl: cloudinaryUrl,
+        isUploadingProof: false 
+      } : m));
+
+      // Kirim feedback gelembung chat AI sukses
+      setCartMessages(prev => [
+        ...prev,
+        {
+          id: generateUniqueId('ai'),
+          sender: 'ai',
+          text: `Pembayaran Kakak untuk invoice *${msg.invoiceNumber}* telah berhasil diterima! 🎉 Status pesanan Kakak di dashboard toko otomatis berubah menjadi *Lunas (paid)*. Asisten AI akan memantau proses pesanan Kakak secara real-time! 🤖`
+        }
+      ]);
+
+    } catch (err) {
+      console.error('Proof upload error:', err);
+      alert('Gagal mengunggah bukti transfer: ' + err.message);
+      setCartMessages(prev => prev.map(m => m.id === messageId ? { ...m, isUploadingProof: false } : m));
+    }
+  };
+
   // Submit standard cart checkout to Supabase
   const handleCheckoutSubmit = (e) => {
     e.preventDefault();
@@ -562,17 +616,35 @@ export default function StorefrontCartProvider({ children, store }) {
       } else {
         setGeneratedInvoice(res.invoiceNumber);
         if (res.orderId) setCreatedOrderId(res.orderId);
-        setShowQRIS(true);
+        setShowQRIS(false); // Matikan popup modal
 
-        // AI reacts inside cart drawer
+        // Tambah pesan teks AI dan kartu pembayaran interaktif ke dalam chat feed
+        const initialAIMsgId = generateUniqueId('ai');
+        const payCardMsgId = generateUniqueId('paycard');
+
         setCartMessages((prev) => [
           ...prev,
           {
-            id: generateUniqueId('ai'),
+            id: initialAIMsgId,
             sender: 'ai',
-            text: `Pesanan kakak berhasil dibuat! 📝\nNo. Invoice: *${res.invoiceNumber}*\nMetode: *${serviceType === 'shipping' ? 'Pengiriman Kurir' : 'Ambil di Toko'}*\nTotal: *Rp ${finalAmount.toLocaleString('id-ID')}* (${paymentInfo})\n\nSilakan selesaikan pembayaran di layar ya kak!`
+            text: `Pesanan kakak berhasil dibuat! 📝\nNo. Invoice: *${res.invoiceNumber}*\nMetode: *${serviceType === 'shipping' ? 'Pengiriman Kurir' : 'Ambil di Toko'}*\nTotal: *Rp ${finalAmount.toLocaleString('id-ID')}* (${paymentInfo})\n\nSilakan selesaikan pembayaran melalui kartu di bawah ini ya kak!`
+          },
+          {
+            id: payCardMsgId,
+            sender: 'ai',
+            isPaymentCard: true,
+            invoiceNumber: res.invoiceNumber,
+            totalAmount: finalAmount,
+            paymentMethod: paymentMethod,
+            bankOption: bankOption,
+            orderId: res.orderId,
+            status: 'pending',
+            proofUrl: ''
           }
         ]);
+
+        // Reset form & kosongkan keranjang karena checkout sudah diproses
+        clearCart();
       }
     });
   };
@@ -658,15 +730,133 @@ export default function StorefrontCartProvider({ children, store }) {
                     </svg>
                   </div>
                 )}
-                <div
-                  className={`p-3 rounded-2xl text-xs leading-relaxed ${
-                    msg.sender === 'user'
-                      ? `${theme.primary} text-white rounded-br-sm shadow-md`
-                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-slate-800/50 rounded-bl-sm shadow-sm'
-                  }`}
-                >
-                  {msg.text}
-                </div>
+                {msg.isPaymentCard ? (
+                  <div className="w-full bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 rounded-2xl p-4 shadow-md text-left space-y-3">
+                    <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-850 pb-2">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">Tagihan Pemesanan</p>
+                        <p className="text-xs font-mono font-bold text-orange-655 dark:text-orange-400">{msg.invoiceNumber}</p>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                        msg.status === 'paid' 
+                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-250 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30' 
+                          : 'bg-amber-50 text-amber-600 border border-amber-250 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30'
+                      }`}>
+                        {msg.status === 'paid' ? 'LUNAS (paid) ✓' : 'BELUM BAYAR'}
+                      </span>
+                    </div>
+
+                    {msg.status !== 'paid' ? (
+                      <div className="space-y-3">
+                        {msg.paymentMethod === 'bank' ? (
+                          <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200/50 dark:border-slate-850 text-xs space-y-1">
+                            <p className="font-bold text-[9px] text-slate-450 uppercase">
+                              {/^(dana|ovo|gopay|shopeepay|linkaja)/i.test(msg.bankOption) ? 'Transfer Dompet Digital:' : 'Transfer Rekening Bank:'}
+                            </p>
+                            <p className="font-bold text-slate-800 dark:text-white">{msg.bankOption}</p>
+                            <p className="text-[9px] text-slate-400">Silakan transfer nominal pas sesuai total di bawah.</p>
+                          </div>
+                        ) : (
+                          <div className="text-center space-y-2">
+                            <div className="w-36 h-36 mx-auto bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl flex items-center justify-center p-2">
+                              {(() => {
+                                const qrData = storeQrisData
+                                  ? convertStaticToDynamicQRIS(storeQrisData, msg.totalAmount)
+                                  : `qris://pay?invoice=${msg.invoiceNumber}&amount=${msg.totalAmount}`;
+                                return (
+                                  <img
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`}
+                                    alt="QRIS Barcode"
+                                    className="w-full h-full object-contain"
+                                  />
+                                );
+                              })()}
+                            </div>
+                            <p className="text-[9px] text-slate-400">Pindai QRIS di atas untuk membayar</p>
+                          </div>
+                        )}
+
+                        <div className="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-100/50 dark:border-slate-850 flex justify-between text-xs font-semibold">
+                          <span>Total Tagihan:</span>
+                          <span className="text-slate-800 dark:text-white">Rp {msg.totalAmount.toLocaleString('id-ID')}</span>
+                        </div>
+
+                        {/* File upload for payment proof */}
+                        <div className="border-t border-slate-100 dark:border-slate-800/80 pt-3">
+                          <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Unggah Bukti Transfer</label>
+                          <div className="relative border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-2.5 bg-slate-50/50 dark:bg-slate-950/20 text-center hover:bg-slate-50 dark:hover:bg-slate-950 cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5 mx-auto text-slate-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            <span className="text-[9px] font-semibold text-slate-500">Pilih Bukti Pembayaran</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="absolute inset-0 opacity-0 cursor-pointer animate-in fade-in duration-300"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                handleCardProofUpload(msg.id, file);
+                              }}
+                            />
+                          </div>
+                          {msg.isUploadingProof && (
+                            <p className="text-[9px] text-amber-500 font-bold mt-1 text-center animate-pulse">⏳ Sedang mengunggah ke Cloudinary...</p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      /* Lunas / paid View - status pesanan real-time */
+                      <div className="space-y-3 text-center py-2">
+                        <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500 border border-emerald-100 dark:border-emerald-900/40 flex items-center justify-center mx-auto text-base font-bold">✓</div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800 dark:text-white">Pembayaran Berhasil Diterima!</p>
+                          <p className="text-[9.5px] text-slate-400 mt-1">Status pesanan Anda telah diperbarui secara real-time.</p>
+                        </div>
+                        
+                        {/* Real-time Order status timeline */}
+                        <div className="bg-slate-50 dark:bg-slate-950/80 p-3 rounded-xl border border-slate-100/50 dark:border-slate-850 text-[10px] text-left space-y-2 mt-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span className="text-slate-500 dark:text-slate-400">Order Dibuat (Sukses)</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">Pembayaran Terverifikasi (Lunas) ✓</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700 animate-pulse shrink-0"></span>
+                            <span className="text-slate-400">Pesanan Sedang Diproses Toko</span>
+                          </div>
+                        </div>
+
+                        {msg.proofUrl && (
+                          <div className="text-left mt-2 border-t border-slate-100 dark:border-slate-800 pt-2">
+                            <p className="text-[9px] text-slate-400">Tautan Bukti Pembayaran:</p>
+                            <a
+                              href={msg.proofUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[9px] text-orange-600 dark:text-orange-400 hover:underline font-mono truncate block mt-0.5"
+                            >
+                              {msg.proofUrl}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className={`p-3 rounded-2xl text-xs leading-relaxed ${
+                      msg.sender === 'user'
+                        ? `${theme.primary} text-white rounded-br-sm shadow-md`
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-slate-800/50 rounded-bl-sm shadow-sm'
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -835,19 +1025,24 @@ export default function StorefrontCartProvider({ children, store }) {
                         onChange={(e) => setBankOption(e.target.value)}
                         className="w-full bg-transparent text-xs text-slate-800 dark:text-white focus:outline-none"
                       >
-                        {storeBankName && storeBankAccountNumber && (() => {
-                          const isStoreEMoney = /^(dana|ovo|gopay|shopeepay|linkaja)/i.test(storeBankName);
+                        {storeBankAccounts.map((acc, idx) => {
+                          const isStoreEMoney = /^(dana|ovo|gopay|shopeepay|linkaja)/i.test(acc.provider);
+                          const optionVal = `${acc.provider} - ${acc.number} (a.n ${acc.name})`;
                           return (
-                            <option value={`${storeBankName} - ${storeBankAccountNumber} (a.n ${storeBankAccountName})`}>
-                              {isStoreEMoney ? '' : 'Bank '}{storeBankName}: {storeBankAccountNumber} (a.n {storeBankAccountName})
+                            <option key={idx} value={optionVal}>
+                              {isStoreEMoney ? '' : 'Bank '}{acc.provider}: {acc.number} (a.n {acc.name})
                             </option>
                           );
-                        })()}
-                        <option value="BCA - 1234567890 (a.n Batik Trusmi Official)">Bank BCA: 1234567890 (a.n Batik Trusmi)</option>
-                        <option value="Mandiri - 9876543210 (a.n Batik Trusmi Official)">Bank Mandiri: 9876543210 (a.n Batik Trusmi)</option>
-                        <option value="BRI - 5555444433 (a.n Batik Trusmi Official)">Bank BRI: 5555444433 (a.n Batik Trusmi)</option>
-                        <option value="DANA - 081234567890 (a.n Batik Trusmi Official)">DANA: 081234567890 (a.n Batik Trusmi)</option>
-                        <option value="OVO - 089876543210 (a.n Batik Trusmi Official)">OVO: 089876543210 (a.n Batik Trusmi)</option>
+                        })}
+                        {storeBankAccounts.length === 0 && (
+                          <>
+                            <option value="BCA - 1234567890 (a.n Batik Trusmi Official)">Bank BCA: 1234567890 (a.n Batik Trusmi)</option>
+                            <option value="Mandiri - 9876543210 (a.n Batik Trusmi Official)">Bank Mandiri: 9876543210 (a.n Batik Trusmi)</option>
+                            <option value="BRI - 5555444433 (a.n Batik Trusmi Official)">Bank BRI: 5555444433 (a.n Batik Trusmi)</option>
+                            <option value="DANA - 081234567890 (a.n Batik Trusmi Official)">DANA: 081234567890 (a.n Batik Trusmi)</option>
+                            <option value="OVO - 089876543210 (a.n Batik Trusmi Official)">OVO: 089876543210 (a.n Batik Trusmi)</option>
+                          </>
+                        )}
                       </select>
                     </div>
                   )}
@@ -1261,130 +1456,6 @@ export default function StorefrontCartProvider({ children, store }) {
           <span className="pl-2.5">Tanya CS AI</span>
         </span>
       </button>
-
-      {/* E. MODAL CHECKOUT INVOICE & MOCK QRIS CODE */}
-      {showQRIS && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowQRIS(false)}></div>
-          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm p-6 text-center border border-slate-200 dark:border-slate-800 shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-200">
-            <h3 className="font-serif text-lg font-bold text-slate-800 dark:text-white mb-1">Pesanan Berhasil Dibuat!</h3>
-            <p className="text-xs text-slate-400 mb-4">No. Invoice: <span className="font-mono font-bold text-orange-600">{generatedInvoice}</span></p>
-            
-            {/* Show QRIS or Bank Detail based on selection */}
-            {((store.category || 'kuliner').toLowerCase() === 'fashion' && paymentMethod === 'bank') ? (() => {
-              const isEMoney = /^(dana|ovo|gopay|shopeepay|linkaja)/i.test(bankOption);
-              return (
-                <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl mb-4 text-left border border-slate-200 dark:border-slate-800">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">
-                    {isEMoney ? 'Transfer Ke E-Money Toko:' : 'Transfer Ke Rekening Toko:'}
-                  </p>
-                  <p className="text-xs font-bold text-slate-800 dark:text-white">{bankOption}</p>
-                  <p className="text-[9px] text-slate-400 mt-2">Silakan transfer nominal pas sesuai dengan total tagihan di bawah.</p>
-                </div>
-              );
-            })() : (
-              /* QRIS Section */
-              <div className="w-44 h-44 mx-auto bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-center p-3 mb-4">
-                {(() => {
-                  const totalAmount = ((store.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping') 
-                    ? (cartSubtotal + ongkirPrice) 
-                    : cartSubtotal;
-                  
-                  const qrData = storeQrisData
-                    ? convertStaticToDynamicQRIS(storeQrisData, totalAmount)
-                    : `qris://pay?invoice=${generatedInvoice}&amount=${totalAmount}`;
-                  
-                  return (
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrData)}`}
-                      alt="QRIS Code"
-                      className="w-full h-full object-contain"
-                    />
-                  );
-                })()}
-              </div>
-            )}
-            
-            <div className="bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl mb-4 text-left border border-slate-100 dark:border-slate-800">
-              <div className="flex justify-between text-xs font-semibold text-slate-650 dark:text-slate-400">
-                <span>Total Bayar:</span>
-                <span className="text-slate-800 dark:text-white">
-                  Rp {(((store.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping') ? (cartSubtotal + ongkirPrice) : cartSubtotal).toLocaleString('id-ID')}
-                </span>
-              </div>
-              <div className="flex justify-between text-[10px] text-slate-450 mt-1">
-                <span>Layanan:</span>
-                <span>
-                  {((store.category || 'kuliner').toLowerCase() === 'fashion')
-                    ? (serviceType === 'shipping' ? `Pengiriman (${courier.split(' - ')[0]})` : 'Ambil di Toko')
-                    : serviceType === 'dine_in'
-                    ? `Makan di Tempat (Meja ${tableNo})`
-                    : 'Bawa Pulang (Take Away)'}
-                </span>
-              </div>
-            </div>
-
-            {/* Cloudinary Bukti Bayar Upload (Only for Fashion Category) */}
-            {((store.category || 'kuliner').toLowerCase() === 'fashion') && (
-              <div className="border-t border-slate-200 dark:border-slate-800 pt-3 mt-3 text-left">
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Unggah Bukti Transfer (Cloudinary)</label>
-                <div className="relative border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-950/20 text-center hover:bg-slate-50 dark:hover:bg-slate-950 cursor-pointer">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mx-auto text-slate-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                  </svg>
-                  <span className="text-[10px] font-semibold text-slate-500">Pilih / Drop Foto Bukti Bayar</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setIsUploading(true);
-                      // Simulate Cloudinary Ingestion
-                      const dummyCloudinaryUrl = `https://res.cloudinary.com/demo/image/upload/v17865/bukti_${file.name}`;
-                      setTimeout(async () => {
-                        setUploadedProofUrl(dummyCloudinaryUrl);
-                        setIsUploading(false);
-                        if (createdOrderId) {
-                          await updateOrderProof(createdOrderId, dummyCloudinaryUrl);
-                        }
-                      }, 1200);
-                    }}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                  />
-                </div>
-                {isUploading && (
-                  <p className="text-[9px] text-amber-500 font-bold mt-1 text-center animate-pulse">⏳ Sedang mengunggah ke Cloudinary...</p>
-                )}
-                {uploadedProofUrl && (
-                  <div className="mt-2 p-2 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-lg text-[9px] text-emerald-600 dark:text-emerald-400">
-                    <span className="font-bold block">✓ Bukti Bayar Terunggah!</span>
-                    <span className="truncate block font-mono mt-0.5">{uploadedProofUrl}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* CUSTOM NOTIFICATION TEXT REQUESTED BY USER */}
-            <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100/50 dark:border-blue-900/30 rounded-xl text-[10.5px] text-slate-500 dark:text-slate-450 text-left leading-relaxed mb-5 mt-3 space-y-1">
-              <p className="font-semibold text-slate-700 dark:text-slate-350">💡 Panduan Pembayaran:</p>
-              <p>Simpan atau screenshot invoice berikut. Nomor invoice digunakan untuk melacak pesanan Anda. Pembayaran bisa dilakukan dengan scan barcode QRIS di atas atau secara tunai dengan menunjukkannya ke kasir. Terima kasih telah berbelanja di sini!</p>
-            </div>
-
-            <button
-              onClick={() => {
-                setShowQRIS(false);
-                clearCart();
-                setCartOpen(false);
-                setUploadedProofUrl('');
-              }}
-              className={`w-full py-3 text-white rounded-xl text-xs font-bold shadow transition-opacity hover:opacity-90 ${theme.primary}`}
-            >
-              Selesai & Tutup
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* F. FORM MODAL PESANAN KHUSUS (KATERING/ACARA) */}
       {specialOrderOpen && (

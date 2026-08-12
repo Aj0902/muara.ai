@@ -35,10 +35,54 @@ export default function ProfileForm({ store }) {
   const [qrisDecodeMessage, setQrisDecodeMessage] = useState({ type: '', text: '' });
   const qrisFileInputRef = useRef(null);
 
-  const standardBanks = ['BCA', 'Mandiri', 'BRI', 'BNI', 'BSI', 'DANA', 'OVO', 'GoPay', 'ShopeePay', 'LinkAja'];
-  const isStandard = bankName ? standardBanks.includes(bankName) : true;
-  const [selectedBankSelect, setSelectedBankSelect] = useState(bankName ? (isStandard ? bankName : 'Lainnya') : 'BCA');
-  const [customBankName, setCustomBankName] = useState(isStandard ? '' : bankName);
+  // Inisialisasi daftar rekening/e-money
+  const [bankAccounts, setBankAccounts] = useState(() => {
+    if (isJsonFacebook) {
+      try {
+        const parsed = JSON.parse(store.facebook);
+        if (parsed.bankAccounts) return parsed.bankAccounts;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    if (bankName && bankAccountNumber) {
+      return [{ provider: bankName, number: bankAccountNumber, name: bankAccountName }];
+    }
+    return [];
+  });
+
+  // State form tambah rekening baru
+  const [showAddAccountForm, setShowAddAccountForm] = useState(false);
+  const [newAccProvider, setNewAccProvider] = useState('BCA');
+  const [newAccProviderCustom, setNewAccProviderCustom] = useState('');
+  const [newAccNumber, setNewAccNumber] = useState('');
+  const [newAccName, setNewAccName] = useState('');
+
+  const handleAddBankAccount = (e) => {
+    e.preventDefault();
+    if (!newAccNumber || !newAccName) {
+      alert('Semua kolom rekening wajib diisi!');
+      return;
+    }
+    const provider = newAccProvider === 'Lainnya' ? newAccProviderCustom : newAccProvider;
+    if (!provider) {
+      alert('Nama provider bank/e-money wajib diisi!');
+      return;
+    }
+    const newAcc = { provider, number: newAccNumber, name: newAccName };
+    setBankAccounts(prev => [...prev, newAcc]);
+    
+    // Reset form
+    setNewAccProvider('BCA');
+    setNewAccProviderCustom('');
+    setNewAccNumber('');
+    setNewAccName('');
+    setShowAddAccountForm(false);
+  };
+
+  const handleRemoveBankAccount = (index) => {
+    setBankAccounts(prev => prev.filter((_, idx) => idx !== index));
+  };
 
   // Cloudinary Upload states
   const [logoUrl, setLogoUrl] = useState(store?.logo_url || '');
@@ -181,17 +225,10 @@ export default function ProfileForm({ store }) {
     if (aboutUrl) formData.set('about_url', aboutUrl);
 
     if (store?.category === 'fashion') {
-      let finalBankName = formData.get('bank_name_select') || '';
-      if (finalBankName === 'Lainnya') {
-        finalBankName = formData.get('bank_name_custom') || '';
-      }
-
       const facebookJson = JSON.stringify({
         facebookUrl: formData.get('facebook') || '',
-        qrisData: formData.get('qris_data') || '',
-        bankName: finalBankName,
-        bankAccountNumber: formData.get('bank_account_number') || '',
-        bankAccountName: formData.get('bank_account_name') || ''
+        qrisData: qrisDataState || '',
+        bankAccounts: bankAccounts
       });
       formData.set('facebook', facebookJson);
     }
@@ -545,18 +582,21 @@ export default function ProfileForm({ store }) {
 
         {/* Pengaturan Pembayaran (Hanya Kategori Fashion) */}
         {store?.category === 'fashion' && (
-          <div>
-            <h4 className="font-bold text-sm text-slate-700 mb-4 border-l-4 border-orange-500 pl-3 uppercase tracking-wider">
+          <div className="space-y-6">
+            <h4 className="font-bold text-sm text-slate-700 mb-2 border-l-4 border-orange-500 pl-3 uppercase tracking-wider">
               4. Pengaturan Pembayaran (Fashion Category)
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              
-              {/* QRIS Upload & String Field */}
-              <div className="md:col-span-2 space-y-3">
-                <label className="block text-xs font-semibold text-slate-500 mb-1">String QRIS Statis Toko</label>
+            
+            {/* Bagian QRIS (Uploader & Status Saja) */}
+            <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/50 dark:border-slate-800/50 space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                <div>
+                  <h5 className="font-bold text-xs uppercase text-slate-500 tracking-wider">QRIS Merchant UMKM</h5>
+                  <p className="text-[10px] text-slate-400 mt-0.5">UMKM cukup upload gambar barcode QRIS statis toko Anda.</p>
+                </div>
                 
                 {/* File Uploader for QRIS image decode */}
-                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                <div className="shrink-0">
                   <input
                     type="file"
                     accept="image/*"
@@ -567,106 +607,186 @@ export default function ProfileForm({ store }) {
                   <button
                     type="button"
                     onClick={() => qrisFileInputRef.current?.click()}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                    className="px-4 py-2 bg-slate-850 hover:bg-slate-750 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm border border-slate-750"
                   >
-                    📷 Unggah Foto QRIS Toko
+                    📷 Unggah Gambar QRIS
                   </button>
-                  <span className="text-[11px] text-slate-400">
-                    Sistem akan otomatis mendeteksi & menerjemahkan gambar QRIS Anda menjadi teks di bawah.
-                  </span>
                 </div>
-
-                {qrisDecodeMessage.text && (
-                  <div
-                    className={`p-3 rounded-xl text-xs font-semibold border ${
-                      qrisDecodeMessage.type === 'success'
-                        ? 'bg-emerald-50 border-emerald-100 text-emerald-600'
-                        : qrisDecodeMessage.type === 'error'
-                        ? 'bg-red-50 border-red-100 text-red-600'
-                        : 'bg-blue-50 border-blue-100 text-blue-600'
-                    }`}
-                  >
-                    {qrisDecodeMessage.text}
-                  </div>
-                )}
-
-                <textarea
-                  name="qris_data"
-                  rows="3"
-                  value={qrisDataState}
-                  onChange={(e) => setQrisDataState(e.target.value)}
-                  placeholder="Masukkan data string QRIS statis Anda (atau unggah gambarnya di atas agar terisi otomatis)..."
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-xs font-mono bg-slate-50"
-                />
-                <p className="text-[10px] text-slate-400">
-                  💡 Tips: String QRIS biasanya diawali dengan &ldquo;000201010211&rdquo;. Nominal dinamis akan dihitung otomatis dari string ini saat pembeli checkout.
-                </p>
               </div>
 
-              {/* Bank & E-Money Select Dropdown */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Bank / Dompet Digital (E-Money)</label>
-                <select
-                  name="bank_name_select"
-                  value={selectedBankSelect}
-                  onChange={(e) => setSelectedBankSelect(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm bg-white"
+              {qrisDecodeMessage.text && (
+                <div
+                  className={`p-3 rounded-xl text-xs font-semibold border ${
+                    qrisDecodeMessage.type === 'success'
+                      ? 'bg-emerald-50 border-emerald-100 text-emerald-600'
+                      : qrisDecodeMessage.type === 'error'
+                      ? 'bg-red-50 border-red-100 text-red-600'
+                      : 'bg-blue-50 border-blue-100 text-blue-600'
+                  }`}
                 >
-                  <option value="BCA">Bank BCA</option>
-                  <option value="Mandiri">Bank Mandiri</option>
-                  <option value="BRI">Bank BRI</option>
-                  <option value="BNI">Bank BNI</option>
-                  <option value="BSI">Bank BSI</option>
-                  <option value="DANA">DANA (E-Money)</option>
-                  <option value="OVO">OVO (E-Money)</option>
-                  <option value="GoPay">GoPay (E-Money)</option>
-                  <option value="ShopeePay">ShopeePay (E-Money)</option>
-                  <option value="LinkAja">LinkAja (E-Money)</option>
-                  <option value="Lainnya">Lainnya (Tulis Sendiri)</option>
-                </select>
-              </div>
-
-              {/* Custom Bank Name Input */}
-              {selectedBankSelect === 'Lainnya' ? (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Tulis Nama Bank/E-Money Baru</label>
-                  <input
-                    type="text"
-                    name="bank_name_custom"
-                    value={customBankName}
-                    onChange={(e) => setCustomBankName(e.target.value)}
-                    required
-                    placeholder="Contoh: Bank Jago, Allo Bank, dll."
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
-                  />
+                  {qrisDecodeMessage.text}
                 </div>
-              ) : (
-                <div className="hidden sm:block"></div>
               )}
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Nomor Rekening / No. HP E-Money</label>
-                <input
-                  type="text"
-                  name="bank_account_number"
-                  defaultValue={bankAccountNumber}
-                  required
-                  placeholder="Contoh: 1234567890 atau 0812XXXXXXXX"
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
-                />
+              {/* Status Banner QRIS */}
+              {qrisDataState ? (
+                <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 rounded-2xl p-4 flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <span className="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs">✓</span>
+                    <div>
+                      <p className="text-xs font-bold text-emerald-800 dark:text-emerald-400">QRIS Toko Aktif</p>
+                      <p className="text-[10px] text-slate-400">Sistem siap mem-generate QRIS dinamis untuk pembeli secara otomatis.</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQrisDataState('');
+                      setQrisDecodeMessage({ type: '', text: '' });
+                    }}
+                    className="px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 border border-red-200/50 rounded-xl text-[10px] font-bold transition-all"
+                  >
+                    Hapus QRIS
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-slate-100/50 dark:bg-slate-950 border border-slate-200/40 dark:border-slate-800/40 rounded-2xl p-4 text-center">
+                  <p className="text-xs font-semibold text-slate-500">Belum ada QRIS Toko yang diunggah.</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Unggah gambar QRIS di atas untuk mengaktifkan pembayaran QRIS.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Bagian Rekening Bank & E-Money */}
+            <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/50 dark:border-slate-800/50 space-y-4">
+              <h5 className="font-bold text-xs uppercase text-slate-500 tracking-wider">Rekening Bank & Dompet Digital (E-Money)</h5>
+              
+              {/* Grid of Bank Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {bankAccounts.map((acc, idx) => {
+                  const isEMoney = /^(dana|ovo|gopay|shopeepay|linkaja)/i.test(acc.provider);
+                  return (
+                    <div key={idx} className="bg-white dark:bg-slate-950 border border-slate-200/40 dark:border-slate-800/40 rounded-2xl p-4 shadow-sm relative group hover:border-orange-500/30 transition-colors">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold ${
+                            isEMoney ? 'bg-orange-50 text-orange-600 border border-orange-200/50' : 'bg-blue-50 text-blue-600 border border-blue-200/50'
+                          }`}>
+                            {isEMoney ? 'Dompet Digital' : 'Rekening Bank'}
+                          </span>
+                          <h5 className="font-bold text-sm text-slate-800 dark:text-white mt-2">{acc.provider}</h5>
+                          <p className="text-xs font-mono font-bold text-slate-650 dark:text-slate-350 mt-1">{acc.number}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">a.n. {acc.name}</p>
+                        </div>
+                        
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveBankAccount(idx)}
+                          className="text-[10px] text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded bg-red-50/50 hover:bg-red-50 dark:bg-red-950/20 dark:hover:bg-red-950/40 transition-colors"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {bankAccounts.length === 0 && (
+                  <div className="sm:col-span-2 bg-white dark:bg-slate-950 border border-slate-200/40 dark:border-slate-800/40 p-6 rounded-2xl text-center">
+                    <p className="text-xs font-medium text-slate-500">Belum ada akun bank atau e-money yang terdaftar.</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Silakan klik tombol di bawah untuk mendaftarkan akun pembayaran Anda.</p>
+                  </div>
+                )}
               </div>
 
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Nama Pemilik Akun / Atas Nama</label>
-                <input
-                  type="text"
-                  name="bank_account_name"
-                  defaultValue={bankAccountName}
-                  required
-                  placeholder="Contoh: Batik Trusmi Official"
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
-                />
-              </div>
+              {/* Toggle Add Account Form */}
+              {!showAddAccountForm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAddAccountForm(true)}
+                  className="w-full py-3 bg-white hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-300 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-800 shadow-sm cursor-pointer"
+                >
+                  <span>+ Tambah Akun Rekening / E-Money</span>
+                </button>
+              ) : (
+                <div className="bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800/60 p-5 rounded-2xl space-y-4 shadow-sm animate-in fade-in slide-in-from-top-3 duration-200">
+                  <h6 className="font-bold text-xs uppercase text-slate-500 tracking-wider">Form Tambah Akun Pembayaran</h6>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-1">PROVIDER AKUN</label>
+                      <select
+                        value={newAccProvider}
+                        onChange={(e) => setNewAccProvider(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 focus:outline-none"
+                      >
+                        <option value="BCA">Bank BCA</option>
+                        <option value="Mandiri">Bank Mandiri</option>
+                        <option value="BRI">Bank BRI</option>
+                        <option value="BNI">Bank BNI</option>
+                        <option value="BSI">Bank BSI</option>
+                        <option value="DANA">DANA (E-Money)</option>
+                        <option value="OVO">OVO (E-Money)</option>
+                        <option value="GoPay">GoPay (E-Money)</option>
+                        <option value="ShopeePay">ShopeePay (E-Money)</option>
+                        <option value="LinkAja">LinkAja (E-Money)</option>
+                        <option value="Lainnya">Lainnya (Tulis Sendiri)</option>
+                      </select>
+                    </div>
+
+                    {newAccProvider === 'Lainnya' && (
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 mb-1">NAMA PROVIDER KUSTOM</label>
+                        <input
+                          type="text"
+                          value={newAccProviderCustom}
+                          onChange={(e) => setNewAccProviderCustom(e.target.value)}
+                          placeholder="Contoh: Bank Jago, Allo Bank"
+                          className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 focus:outline-none"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-1">NOMOR REKENING / NO. HP</label>
+                      <input
+                        type="text"
+                        value={newAccNumber}
+                        onChange={(e) => setNewAccNumber(e.target.value)}
+                        placeholder="Contoh: 1234567890 atau 0812XXXXXXXX"
+                        className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-400 mb-1">NAMA PEMILIK AKUN (ATAS NAMA)</label>
+                      <input
+                        type="text"
+                        value={newAccName}
+                        onChange={(e) => setNewAccName(e.target.value)}
+                        placeholder="Contoh: Batik Trusmi Official"
+                        className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddAccountForm(false)}
+                      className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-650 dark:text-slate-350 rounded-xl text-xs font-semibold transition-colors"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddBankAccount}
+                      className="px-4 py-1.5 bg-orange-650 hover:bg-orange-600 text-white rounded-xl text-xs font-bold shadow transition-colors"
+                    >
+                      Simpan Akun
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
