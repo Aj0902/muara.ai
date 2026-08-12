@@ -8,12 +8,18 @@ import { revalidatePath } from 'next/cache';
 
 // Helper to send WA message via WAHA API
 async function sendWhatsApp(to, message) {
-  const url = process.env.WAHA_API_URL;
-  const apiKey = process.env.WAHA_API_KEY;
-  if (!url || !apiKey) {
-    console.warn('WAHA env vars not set, skipping WA notification');
+  const rawUrl = process.env.WAHA_API_URL;
+  const rawApiKey = process.env.WAHA_API_KEY;
+  const session = process.env.WAHA_SESSION?.trim() || 'default';
+
+  if (!rawUrl || !rawApiKey || !to) {
+    console.warn('WAHA: Missing API URL, Key, or Target Phone', { hasUrl: !!rawUrl, hasKey: !!rawApiKey, to });
     return;
   }
+
+  const url = rawUrl.trim().replace(/\/+$/, '');
+  const apiKey = rawApiKey.trim();
+
   // Normalize phone: strip +, ensure 62 prefix, append @c.us
   let phone = to.replace(/[^0-9]/g, '');
   if (phone.startsWith('08')) phone = '62' + phone.slice(1);
@@ -23,14 +29,19 @@ async function sendWhatsApp(to, message) {
   try {
     const res = await fetch(`${url}/api/sendText`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Api-Key': apiKey },
-      body: JSON.stringify({ session: 'default', chatId, text: message })
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key': apiKey
+      },
+      body: JSON.stringify({ session, chatId, text: message })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'WAHA request failed');
-    console.log('WhatsApp sent:', data);
+    const resText = await res.text();
+    let data;
+    try { data = JSON.parse(resText); } catch { data = resText; }
+    if (!res.ok) throw new Error(typeof data === 'object' ? (data.message || data.error || JSON.stringify(data)) : data);
+    console.log('WhatsApp sent successfully:', data);
   } catch (e) {
-    console.error('Failed to send WhatsApp:', e);
+    console.error('Failed to send WhatsApp:', e.message || e);
   }
 }
 
