@@ -53,10 +53,105 @@ const CartContext = createContext({
   sendCSMessage: () => {}
 });
 
+function calculateCRC16(str) {
+  let crc = 0xffff;
+  for (let i = 0; i < str.length; i++) {
+    crc ^= str.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) {
+      if (crc & 0x8000) {
+        crc = ((crc << 1) ^ 0x1021) & 0xffff;
+      } else {
+        crc = (crc << 1) & 0xffff;
+      }
+    }
+  }
+  return (crc & 0xffff).toString(16).toUpperCase().padStart(4, "0");
+}
+
+function convertStaticToDynamicQRIS(qrisString, amount) {
+  if (!qrisString) return '';
+  try {
+    let baseString = qrisString.trim();
+    if (/6304[0-9A-F]{4}$/i.test(baseString)) {
+      baseString = baseString.substring(0, baseString.length - 8);
+    } else if (baseString.endsWith('6304')) {
+      baseString = baseString.substring(0, baseString.length - 4);
+    }
+    
+    const elements = [];
+    let i = 0;
+    while (i < baseString.length) {
+      const tag = baseString.substring(i, i + 2);
+      const lengthVal = baseString.substring(i + 2, i + 4);
+      const length = parseInt(lengthVal, 10);
+      const value = baseString.substring(i + 4, i + 4 + length);
+      if (!tag || isNaN(length)) break;
+      elements.push({ tag, length, value });
+      i += 4 + length;
+    }
+    
+    const newElements = [];
+    let amountInserted = false;
+    
+    for (const el of elements) {
+      if (['54', '55', '56', '57', '63'].includes(el.tag)) continue;
+      
+      if (el.tag === '01') {
+        newElements.push({ tag: '01', value: '12' });
+        continue;
+      }
+      
+      if (el.tag === '58' && !amountInserted) {
+        newElements.push({ tag: '54', value: amount.toString() });
+        amountInserted = true;
+      }
+      
+      newElements.push(el);
+    }
+    
+    if (!amountInserted) {
+      newElements.push({ tag: '54', value: amount.toString() });
+    }
+    
+    let reconstructed = '';
+    for (const el of newElements) {
+      const lenStr = el.value.length.toString().padStart(2, '0');
+      reconstructed += `${el.tag}${lenStr}${el.value}`;
+    }
+    
+    const crcInput = reconstructed + '6304';
+    const crcVal = calculateCRC16(crcInput);
+    return crcInput + crcVal;
+  } catch (err) {
+    console.error('Error converting QRIS:', err);
+    return qrisString;
+  }
+}
+
 export const useStorefrontCart = () => useContext(CartContext);
 
 export default function StorefrontCartProvider({ children, store }) {
   const { theme } = useStorefrontTheme();
+
+  // Parse QRIS & Bank details dari store.facebook
+  const isJsonFacebook = store?.facebook && store.facebook.startsWith('{');
+  let storeQrisData = '';
+  let storeBankName = '';
+  let storeBankAccountNumber = '';
+  let storeBankAccountName = '';
+
+  if (isJsonFacebook) {
+    try {
+      const parsed = JSON.parse(store.facebook);
+      storeQrisData = parsed.qrisData || '';
+      storeBankName = parsed.bankName || '';
+      storeBankAccountNumber = parsed.bankAccountNumber || '';
+      storeBankAccountName = parsed.bankAccountName || '';
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -120,7 +215,11 @@ export default function StorefrontCartProvider({ children, store }) {
 
   // New R&D Payment & Shipping States
   const [paymentMethod, setPaymentMethod] = useState('qris');
-  const [bankOption, setBankOption] = useState('BCA - 1234567890 (a.n Batik Trusmi Official)');
+  const [bankOption, setBankOption] = useState(
+    storeBankName && storeBankAccountNumber
+      ? `${storeBankName} - ${storeBankAccountNumber} (a.n ${storeBankAccountName})`
+      : 'BCA - 1234567890 (a.n Batik Trusmi Official)'
+  );
   const [uploadedProofUrl, setUploadedProofUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [courier, setCourier] = useState('JNE - Reguler (Rp 12.000)');
@@ -736,6 +835,11 @@ export default function StorefrontCartProvider({ children, store }) {
                         onChange={(e) => setBankOption(e.target.value)}
                         className="w-full bg-transparent text-xs text-slate-800 dark:text-white focus:outline-none"
                       >
+                        {storeBankName && storeBankAccountNumber && (
+                          <option value={`${storeBankName} - ${storeBankAccountNumber} (a.n ${storeBankAccountName})`}>
+                            Bank {storeBankName}: {storeBankAccountNumber} (a.n {storeBankAccountName})
+                          </option>
+                        )}
                         <option value="BCA - 1234567890 (a.n Batik Trusmi Official)">Bank BCA: 1234567890 (a.n Batik Trusmi)</option>
                         <option value="Mandiri - 9876543210 (a.n Batik Trusmi Official)">Bank Mandiri: 9876543210 (a.n Batik Trusmi)</option>
                         <option value="BRI - 5555444433 (a.n Batik Trusmi Official)">Bank BRI: 5555444433 (a.n Batik Trusmi)</option>
@@ -1171,17 +1275,23 @@ export default function StorefrontCartProvider({ children, store }) {
             ) : (
               /* QRIS Section */
               <div className="w-44 h-44 mx-auto bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-center p-3 mb-4">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                    `qris://pay?invoice=${generatedInvoice}&amount=${
-                      ((store.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping') 
-                        ? (cartSubtotal + ongkirPrice) 
-                        : cartSubtotal
-                    }`
-                  )}`}
-                  alt="QRIS Code"
-                  className="w-full h-full object-contain"
-                />
+                {(() => {
+                  const totalAmount = ((store.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping') 
+                    ? (cartSubtotal + ongkirPrice) 
+                    : cartSubtotal;
+                  
+                  const qrData = storeQrisData
+                    ? convertStaticToDynamicQRIS(storeQrisData, totalAmount)
+                    : `qris://pay?invoice=${generatedInvoice}&amount=${totalAmount}`;
+                  
+                  return (
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrData)}`}
+                      alt="QRIS Code"
+                      className="w-full h-full object-contain"
+                    />
+                  );
+                })()}
               </div>
             )}
             

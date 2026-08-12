@@ -9,6 +9,26 @@ export default function ProfileForm({ store }) {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState({ type: '', text: '' });
 
+  const isJsonFacebook = store?.facebook && store.facebook.startsWith('{');
+  let facebookUrl = store?.facebook || '';
+  let qrisData = '';
+  let bankName = '';
+  let bankAccountNumber = '';
+  let bankAccountName = '';
+
+  if (isJsonFacebook) {
+    try {
+      const parsed = JSON.parse(store.facebook);
+      facebookUrl = parsed.facebookUrl || '';
+      qrisData = parsed.qrisData || '';
+      bankName = parsed.bankName || '';
+      bankAccountNumber = parsed.bankAccountNumber || '';
+      bankAccountName = parsed.bankAccountName || '';
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   // Cloudinary Upload states
   const [logoUrl, setLogoUrl] = useState(store?.logo_url || '');
   const [heroUrl, setHeroUrl] = useState(store?.hero_url || '');
@@ -101,6 +121,17 @@ export default function ProfileForm({ store }) {
     if (logoUrl) formData.set('logo_url', logoUrl);
     if (heroUrl) formData.set('hero_url', heroUrl);
     if (aboutUrl) formData.set('about_url', aboutUrl);
+
+    if (store?.category === 'fashion') {
+      const facebookJson = JSON.stringify({
+        facebookUrl: formData.get('facebook') || '',
+        qrisData: formData.get('qris_data') || '',
+        bankName: formData.get('bank_name') || '',
+        bankAccountNumber: formData.get('bank_account_number') || '',
+        bankAccountName: formData.get('bank_account_name') || ''
+      });
+      formData.set('facebook', facebookJson);
+    }
 
     startTransition(async () => {
       const res = await updateStoreProfile(formData);
@@ -398,7 +429,7 @@ export default function ProfileForm({ store }) {
                 <input
                   type="url"
                   name="facebook"
-                  defaultValue={store?.facebook}
+                  defaultValue={facebookUrl}
                   placeholder="https://facebook.com/tokoanda"
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
                 />
@@ -448,6 +479,67 @@ export default function ProfileForm({ store }) {
             </div>
           </div>
         </div>
+
+        {/* Pengaturan Pembayaran (Hanya Kategori Fashion) */}
+        {store?.category === 'fashion' && (
+          <div>
+            <h4 className="font-bold text-sm text-slate-700 mb-4 border-l-4 border-orange-500 pl-3 uppercase tracking-wider">
+              4. Pengaturan Pembayaran (Fashion Category)
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">String QRIS Statis Toko (Mulai dari 000201...)</label>
+                <textarea
+                  name="qris_data"
+                  rows="3"
+                  defaultValue={qrisData}
+                  placeholder="Masukkan data string QRIS statis Anda (dapatkan dengan men-decode gambar QRIS Anda di QRIS decoder)..."
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-xs font-mono"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  💡 Tips: String QRIS biasanya diawali dengan &ldquo;000201010211&rdquo;. Nominal dinamis akan dihitung otomatis dari string ini.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Nama Bank</label>
+                <select
+                  name="bank_name"
+                  defaultValue={bankName || 'BCA'}
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm bg-white"
+                >
+                  <option value="BCA">Bank BCA</option>
+                  <option value="Mandiri">Bank Mandiri</option>
+                  <option value="BRI">Bank BRI</option>
+                  <option value="BNI">Bank BNI</option>
+                  <option value="BSI">Bank BSI</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Nomor Rekening</label>
+                <input
+                  type="text"
+                  name="bank_account_number"
+                  defaultValue={bankAccountNumber}
+                  placeholder="Contoh: 1234567890"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Nama Pemilik Rekening (Atas Nama)</label>
+                <input
+                  type="text"
+                  name="bank_account_name"
+                  defaultValue={bankAccountName}
+                  placeholder="Contoh: Batik Trusmi Official"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-orange-500 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Submit Button */}
         <div className="flex justify-end pt-5 border-t border-slate-100">
