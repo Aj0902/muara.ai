@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 
-// Membaca API Key dari parameter CLI atau membaca berkas .env.local secara manual
+// Membaca API Key dari parameter CLI atau berkas .env.local
 let apiKey = process.argv[2];
 
 if (!apiKey) {
@@ -11,11 +12,11 @@ if (!apiKey) {
       const envContent = fs.readFileSync(envPath, 'utf-8');
       const match = envContent.match(/^RAJAONGKIR_API_KEY\s*=\s*(.*)$/m);
       if (match && match[1]) {
-        apiKey = match[1].trim().replace(/['"]/g, ''); // bersihkan tanda kutip jika ada
+        apiKey = match[1].trim().replace(/['"]/g, '');
       }
     }
   } catch (e) {
-    console.error('Gagal membaca .env.local secara manual:', e);
+    console.error('Gagal membaca .env.local:', e);
   }
 }
 
@@ -29,15 +30,38 @@ if (!apiKey) {
 
 console.log('Memulai pengambilan data wilayah dari RajaOngkir...');
 
+// Helper https.get berbasis Promise untuk menghindari issue fetch IPv6 di Node.js
+function httpsGet(url, headers) {
+  return new Promise((resolve, reject) => {
+    https.get(url, { headers: headers }, (res) => {
+      if (res.statusCode !== 200) {
+        reject(new Error(`HTTP Status Code: ${res.statusCode}`));
+        return;
+      }
+      let rawData = '';
+      res.on('data', (chunk) => { rawData += chunk; });
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(rawData);
+          resolve(parsed);
+        } catch (e) {
+          reject(new Error(`Gagal parse JSON: ${e.message}`));
+        }
+      });
+    }).on('error', (err) => {
+      reject(err);
+    });
+  });
+}
+
 async function run() {
   try {
+    const headers = { key: apiKey };
+
     // 1. Fetch Provinces
     console.log('Mengambil daftar provinsi (RajaOngkir)...');
-    const provRes = await fetch('https://api.rajaongkir.com/starter/province', {
-      headers: { key: apiKey }
-    });
+    const provData = await httpsGet('https://api.rajaongkir.com/starter/province', headers);
     
-    const provData = await provRes.json();
     if (!provData.rajaongkir || provData.rajaongkir.status.code !== 200) {
       throw new Error(`Gagal mengambil provinsi: ${provData.rajaongkir?.status?.description || 'Response Error'}`);
     }
@@ -45,13 +69,10 @@ async function run() {
     const provinces = provData.rajaongkir.results;
     console.log(`Berhasil mengambil ${provinces.length} provinsi.`);
 
-    // 2. Fetch Cities (RajaOngkir /city endpoint returns all 501 cities if queried without province parameter)
+    // 2. Fetch Cities
     console.log('Mengambil daftar kota/kabupaten (RajaOngkir)...');
-    const cityRes = await fetch('https://api.rajaongkir.com/starter/city', {
-      headers: { key: apiKey }
-    });
+    const cityData = await httpsGet('https://api.rajaongkir.com/starter/city', headers);
     
-    const cityData = await cityRes.json();
     if (!cityData.rajaongkir || cityData.rajaongkir.status.code !== 200) {
       throw new Error(`Gagal mengambil kota: ${cityData.rajaongkir?.status?.description || 'Response Error'}`);
     }
