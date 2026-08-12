@@ -1,73 +1,435 @@
-/* Premium dynamic order page styles */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* === CONTAINER === */
 .container {
-  max-width: 800px;
-  margin: 2rem auto;
-  padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1rem;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   font-family: 'Inter', sans-serif;
+  color: #e2e8f0;
 }
 
-.title {
-  font-size: 2rem;
+/* === HEADER === */
+.header {
   text-align: center;
   margin-bottom: 1rem;
-  color: #2c3e50;
+  padding-top: 1.5rem;
+}
+.badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+.badgeCustomer {
+  display: inline-block;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+.title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0.3rem 0 0;
 }
 
+/* === STATUS BANNER === */
+.statusBanner {
+  text-align: center;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  animation: fadeInDown 0.4s ease;
+}
+.statusBanner[data-status="pending"] {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+.statusBanner[data-status="waiting_payment_proof"] {
+  background: rgba(249, 115, 22, 0.15);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+.statusBanner[data-status="payment_uploaded"] {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+.statusBanner[data-status="paid"],
+.statusBanner[data-status="completed"] {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+.statusBanner[data-status="cancelled"] {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.statusBanner[data-status="ready"] {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* === CARDS === */
 .card {
-  background: #f9fafb;
-  padding: 1rem;
-  border-radius: 8px;
-  border-left: 4px solid #4a90e2;
+  background: rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 16px;
+  padding: 1.2rem;
+  margin-bottom: 0.8rem;
+  animation: fadeInUp 0.3s ease;
+}
+.sectionTitle {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #94a3b8;
+  margin: 0 0 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
+/* === INFO GRID === */
+.infoGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.infoItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+.infoItem:last-child { border-bottom: none; }
+.infoLabel {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+.infoValue {
+  font-size: 0.8rem;
+  color: #e2e8f0;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* === ITEM LIST === */
 .itemList {
-  list-style: none;
-  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
-.itemList li {
-  margin: 0.4rem 0;
-  padding: 0.4rem;
-  background: #fff;
-  border-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+.itemRow {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 10px;
+  gap: 0.5rem;
+}
+.itemName {
+  flex: 1;
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+.itemQty {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  font-weight: 600;
+  background: rgba(148, 163, 184, 0.1);
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+}
+.itemPrice {
+  font-size: 0.78rem;
+  color: #f59e0b;
+  font-weight: 700;
+  min-width: 80px;
+  text-align: right;
 }
 
+/* === TOTAL ROW === */
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 2px solid rgba(148, 163, 184, 0.15);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #fff;
+}
+.totalAmount {
+  font-size: 1.1rem;
+  color: #22c55e;
+  font-weight: 800;
+}
+
+/* === NOTES === */
+.notes {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* === PROOF IMAGE === */
+.proofImage {
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  margin-top: 0.5rem;
+}
+
+/* === ACTION BUTTONS === */
+.actionArea {
+  margin-top: 0.5rem;
+}
 .actionBtn {
   display: block;
   width: 100%;
-  padding: 0.8rem;
-  margin-top: 1rem;
-  background: #27ae60;
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
   color: #fff;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
 }
-.actionBtn:hover { background: #219150; }
+.actionBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+}
+.actionBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .actionBtnReject {
   display: block;
   width: 100%;
-  padding: 0.8rem;
-  margin-top: 0.5rem;
-  background: #e74c3c;
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
   color: #fff;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
 }
-.actionBtnReject:hover { background: #c0392b; }
+.actionBtnReject:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+.actionBtnReject:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
-.status-pending { color: #f39c12; font-weight: bold; }
-.status-waiting_payment_proof { color: #e67e22; font-weight: bold; }
-.status-payment_uploaded { color: #9b59b6; font-weight: bold; }
-.status-paid { color: #27ae60; font-weight: bold; }
-.status-cancelled { color: #e74c3c; font-weight: bold; }
+/* === UPLOAD AREA === */
+.uploadHint {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin: 0 0 0.8rem;
+}
+.uploadArea {
+  border: 2px dashed rgba(148, 163, 184, 0.25);
+  border-radius: 14px;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-bottom: 0.8rem;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.uploadArea:hover {
+  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(59, 130, 246, 0.05);
+}
+.uploadPlaceholder {
+  color: #64748b;
+}
+.uploadIcon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.3rem;
+}
+.uploadPlaceholder p {
+  font-size: 0.78rem;
+  margin: 0;
+}
+.uploadPreview {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 10px;
+  object-fit: contain;
+}
+
+/* === QRIS === */
+.qrisContainer {
+  text-align: center;
+  padding: 0.5rem;
+}
+.qrisImage {
+  max-width: 250px;
+  width: 100%;
+  border-radius: 12px;
+  border: 2px solid rgba(148, 163, 184, 0.15);
+}
+
+/* === WAITING / STATUS CARDS === */
+.waitingCard {
+  text-align: center;
+  padding: 1rem;
+}
+.waitingCard h3 {
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+}
+.waitingCard p {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  margin: 0.3rem 0 0.8rem;
+}
+.waitingPulse {
+  width: 16px;
+  height: 16px;
+  background: #fb923c;
+  border-radius: 50%;
+  margin: 0 auto;
+  animation: pulse 1.5s infinite;
+}
+
+.successCard {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 16px;
+  padding: 1.5rem;
+  text-align: center;
+  animation: fadeInUp 0.4s ease;
+}
+.successCard h3 {
+  color: #4ade80;
+  font-size: 1rem;
+  margin: 0 0 0.3rem;
+}
+.successCard p {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  margin: 0;
+}
+
+.cancelledCard {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 16px;
+  padding: 1.5rem;
+  text-align: center;
+  animation: fadeInUp 0.4s ease;
+}
+.cancelledCard h3 {
+  color: #f87171;
+  font-size: 1rem;
+  margin: 0 0 0.3rem;
+}
+.cancelledCard p {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  margin: 0;
+}
+
+.errorCard {
+  text-align: center;
+  padding: 2rem;
+}
+.errorCard h2 {
+  color: #f87171;
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+.errorCard p {
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+
+.refreshBtn {
+  display: inline-block;
+  padding: 0.5rem 1.2rem;
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.refreshBtn:hover {
+  background: rgba(148, 163, 184, 0.25);
+  color: #e2e8f0;
+}
+
+/* === LOADING SPINNER === */
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(148, 163, 184, 0.15);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  margin: 3rem auto 1rem;
+  animation: spin 0.8s linear infinite;
+}
+
+/* === ANIMATIONS === */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
