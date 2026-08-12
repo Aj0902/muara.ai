@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { NextResponse } from 'next/server';
 
 const RAJAONGKIR_API_KEY = process.env.RAJAONGKIR_API_KEY;
@@ -48,8 +50,32 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type');
   
+  // Cari berkas cache lokal di src/lib/
+  const provCachePath = path.join(process.cwd(), 'src', 'lib', 'rajaongkir-provinces.json');
+  const cityCachePath = path.join(process.cwd(), 'src', 'lib', 'rajaongkir-cities.json');
+
+  if (type === 'provinces' && fs.existsSync(provCachePath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(provCachePath, 'utf-8'));
+      return NextResponse.json({ rajaongkir: { results: data } });
+    } catch (e) {
+      console.error('Error reading cached provinces:', e);
+    }
+  }
+
+  if (type === 'cities' && fs.existsSync(cityCachePath)) {
+    try {
+      const provinceId = searchParams.get('provinceId');
+      const data = JSON.parse(fs.readFileSync(cityCachePath, 'utf-8'));
+      const filtered = provinceId ? data.filter(c => c.province_id === provinceId) : data;
+      return NextResponse.json({ rajaongkir: { results: filtered } });
+    } catch (e) {
+      console.error('Error reading cached cities:', e);
+    }
+  }
+
   if (!RAJAONGKIR_API_KEY) {
-    // Return fallback lists directly
+    // Return fallback lists jika cache dan key tidak ada
     if (type === 'provinces') {
       return NextResponse.json({ rajaongkir: { results: FALLBACK_PROVINCES } });
     }
