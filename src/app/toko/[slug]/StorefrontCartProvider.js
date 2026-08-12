@@ -164,6 +164,7 @@ export default function StorefrontCartProvider({ children, store }) {
 
   const [custName, setCustName] = useState('');
   const [custPhone, setCustPhone] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [custAddress, setCustAddress] = useState('');
   const [serviceType, setServiceType] = useState(defaultService);
   const [tableNo, setTableNo] = useState('');
@@ -719,6 +720,10 @@ export default function StorefrontCartProvider({ children, store }) {
       alert('Nama dan No WhatsApp wajib diisi untuk melakukan pemesanan!');
       return;
     }
+    if (!custPhone.startsWith('08') || custPhone.length < 10 || custPhone.length > 15) {
+      alert('Nomor WhatsApp harus diawali 08 dan terdiri dari 10-15 digit!');
+      return;
+    }
     if ((store?.category || 'kuliner').toLowerCase() === 'kuliner' && serviceType === 'dine_in' && !tableNo) {
       alert('Silakan pilih nomor meja untuk layanan Makan di Tempat!');
       return;
@@ -750,10 +755,12 @@ export default function StorefrontCartProvider({ children, store }) {
         checkoutNotes ? `Catatan: ${checkoutNotes}` : ''
       ].filter(Boolean).join(' | ');
 
+      // Normalize phone: 08xxx -> 628xxx for WAHA compatibility
+      const normalizedPhone = custPhone.startsWith('08') ? '62' + custPhone.slice(1) : custPhone;
       const res = await createOrder(
         store.id,
         custName,
-        custPhone,
+        normalizedPhone,
         serviceType,
         tableNo,
         combinedNotes,
@@ -1150,11 +1157,26 @@ export default function StorefrontCartProvider({ children, store }) {
                 <input
                   type="tel"
                   required
-                  placeholder="Contoh: 081234567890"
+                  placeholder="08xxxxxxxxxx"
                   value={custPhone}
-                  onChange={(e) => setCustPhone(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setCustPhone(val);
+                    if (val && !val.startsWith('08')) {
+                      setPhoneError('Nomor harus diawali 08');
+                    } else if (val && val.length < 10) {
+                      setPhoneError('Nomor minimal 10 digit');
+                    } else if (val && val.length > 15) {
+                      setPhoneError('Nomor maksimal 15 digit');
+                    } else {
+                      setPhoneError('');
+                    }
+                  }}
+                  maxLength={15}
+                  className={`w-full bg-slate-50 dark:bg-slate-950 border ${phoneError ? 'border-red-500' : 'border-slate-200 dark:border-slate-800'} px-3 py-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500`}
                 />
+                {phoneError && <p className="text-red-500 text-[10px] mt-1">{phoneError}</p>}
+                <p className="text-slate-400 text-[9px] mt-0.5">Format: 08xxxxxxxxxx (akan otomatis dikonversi ke 628xx untuk WhatsApp)</p>
               </div>
 
               {/* Formulir Checkout Berdasarkan Kategori Toko */}

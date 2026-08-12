@@ -14,11 +14,17 @@ async function sendWhatsApp(to, message) {
     console.warn('WAHA env vars not set, skipping WA notification');
     return;
   }
+  // Normalize phone: strip +, ensure 62 prefix, append @c.us
+  let phone = to.replace(/[^0-9]/g, '');
+  if (phone.startsWith('08')) phone = '62' + phone.slice(1);
+  if (!phone.startsWith('62')) phone = '62' + phone;
+  const chatId = `${phone}@c.us`;
+
   try {
     const res = await fetch(`${url}/api/sendText`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({ to, message })
+      body: JSON.stringify({ session: 'default', chatId, text: message })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'WAHA request failed');
