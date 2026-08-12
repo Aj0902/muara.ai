@@ -222,6 +222,17 @@ export default function StorefrontCartProvider({ children, store }) {
   const [ongkirPrice, setOngkirPrice] = useState(12000);
   const [kota, setKota] = useState('');
 
+  const [copiedStates, setCopiedStates] = useState({});
+  const handleCopyToClipboard = (text, key) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedStates(prev => ({ ...prev, [key]: true }));
+      setTimeout(() => {
+        setCopiedStates(prev => ({ ...prev, [key]: false }));
+      }, 2000);
+    }
+  };
+
   // Conversational Cart messages
   const [cartMessages, setCartMessages] = useState([
     {
@@ -735,7 +746,16 @@ export default function StorefrontCartProvider({ children, store }) {
                     <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-850 pb-2">
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase">Tagihan Pemesanan</p>
-                        <p className="text-xs font-mono font-bold text-orange-655 dark:text-orange-400">{msg.invoiceNumber}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-xs font-mono font-bold text-orange-600 dark:text-orange-400">{msg.invoiceNumber}</p>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyToClipboard(msg.invoiceNumber, `inv-${msg.id}`)}
+                            className="text-[8px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-755 text-slate-600 dark:text-slate-300 rounded font-bold transition-all cursor-pointer"
+                          >
+                            {copiedStates[`inv-${msg.id}`] ? '✓ Tersalin' : 'Salin'}
+                          </button>
+                        </div>
                       </div>
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                         msg.status === 'paid' 
@@ -753,7 +773,22 @@ export default function StorefrontCartProvider({ children, store }) {
                             <p className="font-bold text-[9px] text-slate-450 uppercase">
                               {/^(dana|ovo|gopay|shopeepay|linkaja)/i.test(msg.bankOption) ? 'Transfer Dompet Digital:' : 'Transfer Rekening Bank:'}
                             </p>
-                            <p className="font-bold text-slate-800 dark:text-white">{msg.bankOption}</p>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-bold text-slate-800 dark:text-white truncate">{msg.bankOption}</p>
+                              {(() => {
+                                const accNo = msg.bankOption.split(' - ')[1]?.split(' ')[0] || '';
+                                if (!accNo) return null;
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyToClipboard(accNo, `acc-${msg.id}`)}
+                                    className="text-[8.5px] px-1.5 py-0.5 bg-white hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 text-orange-600 dark:text-orange-450 border border-slate-200 dark:border-slate-800 rounded font-bold shrink-0 transition-all cursor-pointer"
+                                  >
+                                    {copiedStates[`acc-${msg.id}`] ? '✓ Tersalin' : 'Salin Rekening'}
+                                  </button>
+                                );
+                              })()}
+                            </div>
                             <p className="text-[9px] text-slate-400">Silakan transfer nominal pas sesuai total di bawah.</p>
                           </div>
                         ) : (
@@ -775,6 +810,12 @@ export default function StorefrontCartProvider({ children, store }) {
                             <p className="text-[9px] text-slate-400">Pindai QRIS di atas untuk membayar</p>
                           </div>
                         )}
+
+                        {/* Petunjuk pembayaran ditaruh di bawah kartu QRIS/Rekening tujuan */}
+                        <div className="p-2.5 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100/50 dark:border-blue-900/30 rounded-xl text-[9.5px] text-slate-500 dark:text-slate-400 text-left leading-relaxed mt-2 space-y-0.5">
+                          <p className="font-semibold text-slate-700 dark:text-slate-350">💡 Panduan Pembayaran:</p>
+                          <p>Simpan invoice di atas. Silakan scan QRIS atau transfer ke rekening di atas secara pas, lalu unggah foto bukti transfer di bawah.</p>
+                        </div>
 
                         <div className="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-100/50 dark:border-slate-850 flex justify-between text-xs font-semibold">
                           <span>Total Tagihan:</span>
