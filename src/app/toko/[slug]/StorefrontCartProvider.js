@@ -4,6 +4,11 @@ import { useState, useEffect, createContext, useContext, useTransition } from 'r
 import { useStorefrontTheme } from './StorefrontThemeWrapper';
 import { createSpecialOrder, createOrder, getOccupiedTables } from '@/app/actions/store';
 
+let uniqueIdCounter = 0;
+function generateUniqueId(prefix = 'id') {
+  return `${prefix}-${Date.now()}-${uniqueIdCounter++}`;
+}
+
 // Helper to parse size and color options from product description
 function getProductOptions(product) {
   const desc = product.description || '';
@@ -112,6 +117,15 @@ export default function StorefrontCartProvider({ children, store }) {
   const [availableColors, setAvailableColors] = useState([]);
   const [isBeliDirectMode, setIsBeliDirectMode] = useState(false);
 
+  // New R&D Payment & Shipping States
+  const [paymentMethod, setPaymentMethod] = useState('qris');
+  const [bankOption, setBankOption] = useState('BCA - 1234567890 (a.n Batik Trusmi Official)');
+  const [uploadedProofUrl, setUploadedProofUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [courier, setCourier] = useState('JNE - Reguler (Rp 12.000)');
+  const [ongkirPrice, setOngkirPrice] = useState(12000);
+  const [kota, setKota] = useState('');
+
   // Conversational Cart messages
   const [cartMessages, setCartMessages] = useState([
     {
@@ -200,7 +214,7 @@ export default function StorefrontCartProvider({ children, store }) {
       detailText = ` (${[selectedSize ? `Ukuran: ${selectedSize}` : '', selectedColor ? `Warna: ${selectedColor}` : ''].filter(Boolean).join(', ')})`;
     }
     const aiMessage = {
-      id: Date.now().toString(),
+      id: generateUniqueId('ai'),
       sender: 'ai',
       text:
         (store.category || 'kuliner').toLowerCase() === 'fashion'
@@ -281,10 +295,10 @@ export default function StorefrontCartProvider({ children, store }) {
   // Send message inside conversational cart
   const sendCartMessage = async (text) => {
     if (!text.trim() || !chatSessionId) return;
-    const userMsg = { id: Date.now().toString() + '-u', sender: 'user', text };
+    const userMsg = { id: generateUniqueId('user'), sender: 'user', text };
     setCartMessages((prev) => [...prev, userMsg]);
 
-    const typingId = Date.now().toString() + '-typing';
+    const typingId = generateUniqueId('typing');
     setCartMessages((prev) => [...prev, { id: typingId, sender: 'ai', text: 'Mengetik... 🤖' }]);
 
     try {
@@ -321,10 +335,10 @@ export default function StorefrontCartProvider({ children, store }) {
   // Send message to CS AI
   const sendCSMessage = async (text) => {
     if (!text.trim() || !chatSessionId) return;
-    const userMsg = { id: Date.now().toString() + '-u', sender: 'user', text };
+    const userMsg = { id: generateUniqueId('user'), sender: 'user', text };
     setCSMessages((prev) => [...prev, userMsg]);
 
-    const typingId = Date.now().toString() + '-typing';
+    const typingId = generateUniqueId('typing');
     setCSMessages((prev) => [...prev, { id: typingId, sender: 'ai', text: 'Mengetik... 🤖' }]);
 
     try {
@@ -415,9 +429,23 @@ export default function StorefrontCartProvider({ children, store }) {
       alert('Silakan pilih nomor meja untuk layanan Makan di Tempat!');
       return;
     }
+    if ((store?.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping' && !custAddress) {
+      alert('Silakan masukkan Alamat Lengkap Pengiriman!');
+      return;
+    }
 
     startCheckoutTransition(async () => {
-      const combinedNotes = [custAddress, checkoutNotes].filter(Boolean).join(' | ');
+      // Calculate real total including shipping costs
+      const activeOngkir = ((store?.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping') ? ongkirPrice : 0;
+      const finalAmount = cartSubtotal + activeOngkir;
+      
+      const paymentInfo = paymentMethod === 'qris' ? 'QRIS' : `Transfer Bank (${bankOption})`;
+      const combinedNotes = [
+        custAddress ? `Alamat: ${custAddress}` : '',
+        `Metode Bayar: ${paymentInfo}`,
+        checkoutNotes ? `Catatan: ${checkoutNotes}` : ''
+      ].filter(Boolean).join(' | ');
+
       const res = await createOrder(
         store.id,
         custName,
@@ -425,7 +453,7 @@ export default function StorefrontCartProvider({ children, store }) {
         serviceType,
         tableNo,
         combinedNotes,
-        cartSubtotal,
+        finalAmount,
         cart
       );
 
@@ -439,9 +467,9 @@ export default function StorefrontCartProvider({ children, store }) {
         setCartMessages((prev) => [
           ...prev,
           {
-            id: Date.now().toString(),
+            id: generateUniqueId('ai'),
             sender: 'ai',
-            text: `Pesanan kakak berhasil dibuat! 📝\nNo. Invoice: *${res.invoiceNumber}*\nLayanan: *${serviceType === 'dine_in' ? `Dine In (Meja ${tableNo})` : 'Take Away'}*\nTotal: *Rp ${cartSubtotal.toLocaleString('id-ID')}*\n\nSilakan simpan invoice dan selesaikan pembayaran di layar ya kak!`
+            text: `Pesanan kakak berhasil dibuat! 📝\nNo. Invoice: *${res.invoiceNumber}*\nMetode: *${serviceType === 'shipping' ? 'Pengiriman Kurir' : 'Ambil di Toko'}*\nTotal: *Rp ${finalAmount.toLocaleString('id-ID')}* (${paymentInfo})\n\nSilakan selesaikan pembayaran di layar ya kak!`
           }
         ]);
       }
@@ -634,29 +662,129 @@ export default function StorefrontCartProvider({ children, store }) {
 
               {/* Formulir Checkout Berdasarkan Kategori Toko */}
               {(store.category || 'kuliner').toLowerCase() === 'fashion' ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  {/* Delivery Method Selection */}
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1">METODE PENGIRIMAN</label>
-                    <select
-                      value={serviceType}
-                      onChange={(e) => setServiceType(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2 py-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
-                    >
-                      <option value="shipping">Pengiriman Kurir / Ekspedisi 🚚</option>
-                      <option value="pickup">Ambil di Toko 🛍️</option>
-                    </select>
+                    <label className="block text-[10px] font-bold text-slate-400 mb-1.5">METODE PENYERAHAN BARANG</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServiceType('shipping');
+                        }}
+                        className={`py-2 px-3 rounded-xl text-xs font-semibold border flex items-center justify-center gap-1.5 transition-all ${
+                          serviceType === 'shipping'
+                            ? `${theme.primary} text-white border-transparent`
+                            : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        🚚 Kirim Kurir
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServiceType('pickup');
+                        }}
+                        className={`py-2 px-3 rounded-xl text-xs font-semibold border flex items-center justify-center gap-1.5 transition-all ${
+                          serviceType === 'pickup'
+                            ? `${theme.primary} text-white border-transparent`
+                            : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        🛍️ Ambil Toko
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Payment Method Selection */}
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1">ALAMAT LENGKAP PENGIRIMAN & KOTA</label>
-                    <textarea
-                      rows={2}
-                      required={serviceType === 'shipping'}
-                      placeholder="Masukkan alamat jalan, RT/RW, Kecamatan, & Kota..."
-                      value={custAddress}
-                      onChange={(e) => setCustAddress(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
-                    />
+                    <label className="block text-[10px] font-bold text-slate-400 mb-1.5">METODE PEMBAYARAN</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('qris')}
+                        className={`py-2 px-3 rounded-xl text-xs font-semibold border flex items-center justify-center gap-1.5 transition-all ${
+                          paymentMethod === 'qris'
+                            ? `${theme.primary} text-white border-transparent`
+                            : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        📱 QRIS Dinamis
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('bank')}
+                        className={`py-2 px-3 rounded-xl text-xs font-semibold border flex items-center justify-center gap-1.5 transition-all ${
+                          paymentMethod === 'bank'
+                            ? `${theme.primary} text-white border-transparent`
+                            : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        🏦 Transfer Bank
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Bank Select Option Dropdown */}
+                  {paymentMethod === 'bank' && (
+                    <div className="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                      <label className="block text-[9px] font-bold text-slate-400 mb-1">REKENING BANK TUJUAN</label>
+                      <select
+                        value={bankOption}
+                        onChange={(e) => setBankOption(e.target.value)}
+                        className="w-full bg-transparent text-xs text-slate-800 dark:text-white focus:outline-none"
+                      >
+                        <option value="BCA - 1234567890 (a.n Batik Trusmi Official)">Bank BCA: 1234567890 (a.n Batik Trusmi)</option>
+                        <option value="Mandiri - 9876543210 (a.n Batik Trusmi Official)">Bank Mandiri: 9876543210 (a.n Batik Trusmi)</option>
+                        <option value="BRI - 5555444433 (a.n Batik Trusmi Official)">Bank BRI: 5555444433 (a.n Batik Trusmi)</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Address Inputs (Only if shipping is chosen) */}
+                  {serviceType === 'shipping' && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">ALAMAT LENGKAP PENGIRIMAN *</label>
+                        <textarea
+                          rows={2}
+                          required
+                          placeholder="Masukkan nama jalan, nomor rumah, RT/RW, Kecamatan..."
+                          value={custAddress}
+                          onChange={(e) => setCustAddress(e.target.value)}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[9px] font-bold text-slate-500 mb-1">KOTA TUJUAN</label>
+                          <input
+                            type="text"
+                            value={kota}
+                            onChange={(e) => setKota(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-bold text-slate-500 mb-1">ONGKIR (RAJAONGKIR)</label>
+                          <select
+                            value={courier}
+                            onChange={(e) => {
+                              setCourier(e.target.value);
+                              if (e.target.value.includes('JNE')) setOngkirPrice(12000);
+                              if (e.target.value.includes('J&T')) setOngkirPrice(15000);
+                              if (e.target.value.includes('POS')) setOngkirPrice(10000);
+                            }}
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2 py-2 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none"
+                          >
+                            <option value="JNE - Reguler (Rp 12.000)">JNE Reguler - Rp 12.000</option>
+                            <option value="J&T - EZ (Rp 15.000)">J&T EZ - Rp 15.000</option>
+                            <option value="POS - Kilat (Rp 10.000)">POS Kilat - Rp 10.000</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (store.category || 'kuliner').toLowerCase() === 'kriya' ? (
                 <div className="space-y-3">
@@ -731,6 +859,25 @@ export default function StorefrontCartProvider({ children, store }) {
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
                 ></textarea>
               </div>
+
+              {/* Rincian Harga Transparan di Keranjang AI */}
+              {((store.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping') && (
+                <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1 text-xs">
+                  <div className="flex justify-between text-slate-500">
+                    <span>Subtotal Produk:</span>
+                    <span>Rp {cartSubtotal.toLocaleString('id-ID')}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-500">
+                    <span>Ongkos Kirim ({courier.split(' - ')[0]}):</span>
+                    <span>Rp {ongkirPrice.toLocaleString('id-ID')}</span>
+                  </div>
+                  <div className="border-t border-slate-200 dark:border-slate-800 my-1"></div>
+                  <div className="flex justify-between font-bold text-slate-800 dark:text-white">
+                    <span>Total Bayar:</span>
+                    <span>Rp {(cartSubtotal + ongkirPrice).toLocaleString('id-ID')}</span>
+                  </div>
+                </div>
+              )}
 
               <button
                 type="submit"
@@ -1009,28 +1156,88 @@ export default function StorefrontCartProvider({ children, store }) {
             <h3 className="font-serif text-lg font-bold text-slate-800 dark:text-white mb-1">Pesanan Berhasil Dibuat!</h3>
             <p className="text-xs text-slate-400 mb-4">No. Invoice: <span className="font-mono font-bold text-orange-600">{generatedInvoice}</span></p>
             
-            {/* Mock QRIS Image */}
-            <div className="w-44 h-44 mx-auto bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-center p-3 mb-4">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`qris://pay?invoice=${generatedInvoice}&amount=${cartSubtotal}`)}`}
-                alt="QRIS Code"
-                className="w-full h-full object-contain"
-              />
-            </div>
+            {/* Show QRIS or Bank Detail based on selection */}
+            {((store.category || 'kuliner').toLowerCase() === 'fashion' && paymentMethod === 'bank') ? (
+              <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl mb-4 text-left border border-slate-200 dark:border-slate-800">
+                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Transfer Ke Rekening Toko:</p>
+                <p className="text-xs font-bold text-slate-800 dark:text-white">{bankOption}</p>
+                <p className="text-[9px] text-slate-400 mt-2">Silakan transfer nominal pas sesuai dengan total tagihan di bawah.</p>
+              </div>
+            ) : (
+              /* QRIS Section */
+              <div className="w-44 h-44 mx-auto bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-center p-3 mb-4">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+                    `qris://pay?invoice=${generatedInvoice}&amount=${
+                      ((store.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping') 
+                        ? (cartSubtotal + ongkirPrice) 
+                        : cartSubtotal
+                    }`
+                  )}`}
+                  alt="QRIS Code"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            )}
             
             <div className="bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl mb-4 text-left border border-slate-100 dark:border-slate-800">
               <div className="flex justify-between text-xs font-semibold text-slate-650 dark:text-slate-400">
                 <span>Total Bayar:</span>
-                <span className="text-slate-800 dark:text-white">Rp {cartSubtotal.toLocaleString('id-ID')}</span>
+                <span className="text-slate-800 dark:text-white">
+                  Rp {(((store.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping') ? (cartSubtotal + ongkirPrice) : cartSubtotal).toLocaleString('id-ID')}
+                </span>
               </div>
               <div className="flex justify-between text-[10px] text-slate-450 mt-1">
                 <span>Layanan:</span>
-                <span>{serviceType === 'dine_in' ? `Makan di Tempat (Meja ${tableNo})` : 'Bawa Pulang (Take Away)'}</span>
+                <span>
+                  {((store.category || 'kuliner').toLowerCase() === 'fashion')
+                    ? (serviceType === 'shipping' ? `Pengiriman (${courier.split(' - ')[0]})` : 'Ambil di Toko')
+                    : serviceType === 'dine_in'
+                    ? `Makan di Tempat (Meja ${tableNo})`
+                    : 'Bawa Pulang (Take Away)'}
+                </span>
               </div>
             </div>
 
+            {/* Cloudinary Bukti Bayar Upload (Only for Fashion Category) */}
+            {((store.category || 'kuliner').toLowerCase() === 'fashion') && (
+              <div className="border-t border-slate-200 dark:border-slate-800 pt-3 mt-3 text-left">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Unggah Bukti Transfer (Cloudinary)</label>
+                <div className="relative border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-950/20 text-center hover:bg-slate-50 dark:hover:bg-slate-950 cursor-pointer">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mx-auto text-slate-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  <span className="text-[10px] font-semibold text-slate-500">Pilih / Drop Foto Bukti Bayar</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setIsUploading(true);
+                      // Simulate Cloudinary Ingestion
+                      setTimeout(() => {
+                        setUploadedProofUrl(`https://res.cloudinary.com/demo/image/upload/v17865/bukti_${file.name}`);
+                        setIsUploading(false);
+                      }, 1200);
+                    }}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                </div>
+                {isUploading && (
+                  <p className="text-[9px] text-amber-500 font-bold mt-1 text-center animate-pulse">⏳ Sedang mengunggah ke Cloudinary...</p>
+                )}
+                {uploadedProofUrl && (
+                  <div className="mt-2 p-2 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-lg text-[9px] text-emerald-600 dark:text-emerald-400">
+                    <span className="font-bold block">✓ Bukti Bayar Terunggah!</span>
+                    <span className="truncate block font-mono mt-0.5">{uploadedProofUrl}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* CUSTOM NOTIFICATION TEXT REQUESTED BY USER */}
-            <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100/50 dark:border-blue-900/30 rounded-xl text-[10.5px] text-slate-500 dark:text-slate-450 text-left leading-relaxed mb-5 space-y-1">
+            <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100/50 dark:border-blue-900/30 rounded-xl text-[10.5px] text-slate-500 dark:text-slate-450 text-left leading-relaxed mb-5 mt-3 space-y-1">
               <p className="font-semibold text-slate-700 dark:text-slate-350">💡 Panduan Pembayaran:</p>
               <p>Simpan atau screenshot invoice berikut. Nomor invoice digunakan untuk melacak pesanan Anda. Pembayaran bisa dilakukan dengan scan barcode QRIS di atas atau secara tunai dengan menunjukkannya ke kasir. Terima kasih telah berbelanja di sini!</p>
             </div>
@@ -1040,6 +1247,7 @@ export default function StorefrontCartProvider({ children, store }) {
                 setShowQRIS(false);
                 clearCart();
                 setCartOpen(false);
+                setUploadedProofUrl('');
               }}
               className={`w-full py-3 text-white rounded-xl text-xs font-bold shadow transition-opacity hover:opacity-90 ${theme.primary}`}
             >
