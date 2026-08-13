@@ -29,7 +29,7 @@ function getBaseUrl() {
 // Helper to send WA message via WAHA API directly
 async function sendWhatsApp(to, message) {
   const rawUrl = process.env.WAHA_API_URL;
-  const apiKey = process.env.WAHA_API_KEY?.trim();
+  const apiKey = (process.env.WAHA_API_KEY || process.env.WHATSAPP_API_KEY || process.env.WAHA_KEY)?.trim();
   const session = 'muara';
 
   if (!rawUrl || !to || !message) {

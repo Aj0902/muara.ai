@@ -19,11 +19,10 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const phone = searchParams.get('phone');
   const customKey = searchParams.get('key');
-  const customSession = searchParams.get('session');
 
   const rawUrl = process.env.WAHA_API_URL;
-  const rawApiKey = customKey || process.env.WAHA_API_KEY;
-  const session = customSession?.trim() || 'muara';
+  const rawApiKey = customKey || process.env.WAHA_API_KEY || process.env.WHATSAPP_API_KEY || process.env.WAHA_KEY;
+  const session = 'muara';
 
   if (!rawUrl) {
     return NextResponse.json({

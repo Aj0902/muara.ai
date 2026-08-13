@@ -20,7 +20,7 @@ export async function POST(request) {
     const { to, message } = await request.json();
 
     const rawUrl = process.env.WAHA_API_URL;
-    const apiKey = process.env.WAHA_API_KEY?.trim();
+    const apiKey = (process.env.WAHA_API_KEY || process.env.WHATSAPP_API_KEY || process.env.WAHA_KEY)?.trim();
     const session = 'muara';
 
     if (!rawUrl) {
