@@ -916,7 +916,7 @@ export default function StorefrontCartProvider({ children, store }) {
                       </span>
                     </div>
 
-                    {msg.status !== 'paid' ? (
+                    {msg.status === 'pending' || msg.status === 'waiting_payment_proof' ? (
                       <div className="space-y-3">
                         {msg.paymentMethod === 'bank' ? (() => {
                           const parts = msg.bankOption.split(' - ');
@@ -976,14 +976,42 @@ export default function StorefrontCartProvider({ children, store }) {
                                   : `qris://pay?invoice=${msg.invoiceNumber}&amount=${msg.totalAmount}`;
                                 return (
                                   <img
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`}
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`}
                                     alt="QRIS Barcode"
                                     className="w-full h-full object-contain"
                                   />
                                 );
                               })()}
                             </div>
-                            <p className="text-[9px] text-slate-400">Pindai QRIS di atas untuk membayar</p>
+                            <div className="flex flex-col items-center gap-1">
+                              <p className="text-[9px] text-slate-400">Pindai QRIS di atas untuk membayar</p>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const qrData = storeQrisData
+                                    ? convertStaticToDynamicQRIS(storeQrisData, msg.totalAmount)
+                                    : `qris://pay?invoice=${msg.invoiceNumber}&amount=${msg.totalAmount}`;
+                                  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(qrData)}`;
+                                  try {
+                                    const res = await fetch(qrUrl);
+                                    const blob = await res.blob();
+                                    const blobUrl = URL.createObjectURL(blob);
+                                    const link = document.createElement('a');
+                                    link.href = blobUrl;
+                                    link.download = `QRIS_${msg.invoiceNumber}.png`;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                    URL.revokeObjectURL(blobUrl);
+                                  } catch {
+                                    window.open(qrUrl, '_blank');
+                                  }
+                                }}
+                                className="text-[10px] px-2.5 py-1 bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 border border-orange-200/60 dark:border-orange-900/40 rounded-lg font-bold transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm mt-0.5"
+                              >
+                                <span>⬇️ Simpan / Download QRIS</span>
+                              </button>
+                            </div>
                           </div>
                         )}
 
@@ -1020,18 +1048,38 @@ export default function StorefrontCartProvider({ children, store }) {
                           {msg.isUploadingProof && (
                             <p className="text-[9px] text-amber-500 font-bold mt-1 text-center animate-pulse">⏳ Sedang mengunggah bukti transfer...</p>
                           )}
-
-                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <a
-                              href={`/pesanan/bayar/${msg.orderToken || msg.orderId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block w-full text-center py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-[11px] transition-all shadow-sm"
-                            >
-                              🧾 Buka Halaman Tagihan Lengkap
-                            </a>
+                        </div>
+                      </div>
+                    ) : msg.status === 'payment_uploaded' ? (
+                      /* Status: Payment Uploaded - Waiting seller verification */
+                      <div className="space-y-3 text-center py-2">
+                        <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-950/30 text-amber-500 border border-amber-100 dark:border-amber-900/40 flex items-center justify-center mx-auto text-base font-bold">⏳</div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800 dark:text-white">Menunggu Verifikasi Penjual</p>
+                          <p className="text-[9.5px] text-slate-400 mt-1">Bukti transfer telah terkirim. Penjual sedang memverifikasi pembayaran Anda.</p>
+                        </div>
+                        
+                        <div className="bg-slate-50 dark:bg-slate-950/80 p-3 rounded-xl border border-slate-100/50 dark:border-slate-850 text-[10px] text-left space-y-2 mt-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span className="text-slate-500 dark:text-slate-400">Order Dibuat (Sukses)</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+                            <span className="font-semibold text-amber-600 dark:text-amber-400">Bukti Transfer Terkirim (Menunggu Verifikasi Penjual)</span>
                           </div>
                         </div>
+
+                        {msg.proofUrl && (
+                          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-center">
+                            <p className="text-[9px] text-slate-400 mb-1">Foto Bukti Transfer:</p>
+                            <img
+                              src={msg.proofUrl}
+                              alt="Bukti Transfer"
+                              className="w-24 h-24 object-cover rounded-xl border border-slate-200 dark:border-slate-800 mx-auto shadow-sm"
+                            />
+                          </div>
+                        )}
                       </div>
                     ) : (
                       /* Lunas / paid View - status pesanan real-time */
@@ -1059,16 +1107,13 @@ export default function StorefrontCartProvider({ children, store }) {
                         </div>
 
                         {msg.proofUrl && (
-                          <div className="text-left mt-2 border-t border-slate-100 dark:border-slate-800 pt-2">
-                            <p className="text-[9px] text-slate-400">Tautan Bukti Pembayaran:</p>
-                            <a
-                              href={msg.proofUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[9px] text-orange-600 dark:text-orange-400 hover:underline font-mono truncate block mt-0.5"
-                            >
-                              {msg.proofUrl}
-                            </a>
+                          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-center">
+                            <p className="text-[9px] text-slate-400 mb-1 font-semibold">Foto Bukti Transfer:</p>
+                            <img
+                              src={msg.proofUrl}
+                              alt="Bukti Transfer"
+                              className="w-24 h-24 object-cover rounded-xl border border-slate-200 dark:border-slate-800 mx-auto shadow-sm"
+                            />
                           </div>
                         )}
                       </div>

@@ -179,6 +179,52 @@ export default function CustomerPaymentPage() {
         <div className={styles.paymentMethodBadge}>
           {paymentMethodText}
         </div>
+
+        {paymentMethodText.toLowerCase().includes('qris') && (
+          <div style={{ textAlign: 'center', margin: '0.8rem 0 1.2rem' }}>
+            <div style={{ width: '180px', height: '180px', margin: '0 auto', background: '#fff', padding: '10px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`qris://pay?invoice=${order.invoice_number}&amount=${order.total_amount}`)}`}
+                alt="QRIS Barcode"
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(`qris://pay?invoice=${order.invoice_number}&amount=${order.total_amount}`)}`;
+                try {
+                  const res = await fetch(qrUrl);
+                  const blob = await res.blob();
+                  const blobUrl = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = blobUrl;
+                  link.download = `QRIS_${order.invoice_number}.png`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(blobUrl);
+                } catch {
+                  window.open(qrUrl, '_blank');
+                }
+              }}
+              style={{
+                marginTop: '0.6rem',
+                background: 'rgba(249, 115, 22, 0.15)',
+                color: '#f97316',
+                border: '1px solid rgba(249, 115, 22, 0.4)',
+                padding: '0.45rem 1rem',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              ⬇️ Simpan / Download Gambar QRIS
+            </button>
+          </div>
+        )}
+
         <p className={styles.paymentInstruction}>
           Silakan selesaikan pembayaran sebesar <strong className={styles.highlightAmount}>Rp {Number(order.total_amount).toLocaleString('id-ID')}</strong> sesuai metode di atas, lalu unggah foto/screenshot bukti transfer di bawah ini.
         </p>
