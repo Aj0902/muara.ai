@@ -34,6 +34,9 @@ function getProductOptions(product) {
   return { sizes, colors };
 }
 
+const CATALOG_KEYWORDS = ['katalog', 'rekomendasi', 'produk', 'menu', 'jual', 'pilihan', 'pakaian', 'busana', 'batik', 'rotan', 'makanan', 'minuman', 'baju', 'celana', 'kaos', 'terlaris', 'favorit', 'diskon', 'harga', 'saran', 'apapun'];
+const INFO_KEYWORDS = ['lokasi', 'alamat', 'jam', 'buka', 'operasional', 'kontak', 'wa', 'whatsapp', 'maps', 'dimana', 'di mana', 'posisi', 'nomor'];
+
 const CartContext = createContext({
   cart: [],
   cartCount: 0,
@@ -557,13 +560,8 @@ export default function StorefrontCartProvider({ children, store }) {
       const replyStr = (data.reply || '').toLowerCase();
       const lowerText = text.toLowerCase();
 
-      // Expanded detection for product recommendation / catalog intent
-      const catalogKws = ['katalog', 'rekomendasi', 'produk', 'menu', 'jual', 'pilihan', 'pakaian', 'busana', 'batik', 'rotan', 'makanan', 'minuman', 'baju', 'celana', 'kaos', 'terlaris', 'favorit', 'diskon', 'harga', 'saran', 'apapun'];
-      const isCatalogQuery = catalogKws.some(kw => lowerText.includes(kw) || replyStr.includes(kw)) || replyStr.includes('rp ');
-
-      // Expanded detection for location / address / contact / hours intent
-      const infoKws = ['lokasi', 'alamat', 'jam', 'buka', 'operasional', 'kontak', 'wa', 'whatsapp', 'maps', 'dimana', 'di mana', 'posisi', 'nomor'];
-      const isInfoQuery = infoKws.some(kw => lowerText.includes(kw) || replyStr.includes(kw));
+      const isCatalogQuery = CATALOG_KEYWORDS.some(kw => lowerText.includes(kw) || replyStr.includes(kw)) || replyStr.includes('rp ');
+      const isInfoQuery = INFO_KEYWORDS.some(kw => lowerText.includes(kw) || replyStr.includes(kw));
 
       setCartMessages((prev) =>
         prev.map((msg) =>
@@ -613,8 +611,8 @@ export default function StorefrontCartProvider({ children, store }) {
       const replyStr = (data.reply || '').toLowerCase();
       const lowerText = text.toLowerCase();
 
-      const isCatalogQuery = catalogKws.some(kw => lowerText.includes(kw) || replyStr.includes(kw)) || replyStr.includes('rp ');
-      const isInfoQuery = infoKws.some(kw => lowerText.includes(kw) || replyStr.includes(kw));
+      const isCatalogQuery = CATALOG_KEYWORDS.some(kw => lowerText.includes(kw) || replyStr.includes(kw)) || replyStr.includes('rp ');
+      const isInfoQuery = INFO_KEYWORDS.some(kw => lowerText.includes(kw) || replyStr.includes(kw));
 
       setCSMessages((prev) =>
         prev.map((msg) =>
