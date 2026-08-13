@@ -234,12 +234,13 @@ function getCategoryPresetFallback(storeName, category, description) {
   }
 }
 
-// Call KIE.ai OpenAI-Compatible Chat Completions API
+// Call KIE.ai OpenAI-Compatible & Gemini API Endpoints
 async function generateStoreContentWithKIE(storeName, category, description) {
   const apiKey = (process.env.KIE_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)?.trim();
-  const modelName = process.env.KIE_MODEL_NAME || 'gemini-3-5-flash';
-  const baseUrl = (process.env.KIE_API_BASE_URL || 'https://api.kie.ai/v1').replace(/\/+$/, '');
-  const endpoint = `${baseUrl}/chat/completions`;
+  const rawModel = process.env.KIE_MODEL_NAME;
+  const modelName = (!rawModel || rawModel === 'KIE_MODEL_NAME') ? 'gemini-3-5-flash' : rawModel.trim();
+  const rawBaseUrl = process.env.KIE_API_BASE_URL;
+  const userBaseUrl = (!rawBaseUrl || rawBaseUrl.includes('KIE_API_BASE_URL')) ? 'https://api.kie.ai/v1' : rawBaseUrl.trim();
 
   if (!apiKey || apiKey === 'your_kie_api_key_here') {
     console.warn('KIE_API_KEY is not configured, fallback to category preset.');
@@ -325,48 +326,82 @@ Panduan Output JSON Wajib:
   ]
 }`;
 
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 9000);
-
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: modelName,
-        messages: [
-          { role: 'system', content: 'Anda adalah AI Instant Store Creator yang mengembalikan RAW JSON murni.' },
-          { role: 'user', content: prompt }
-        ],
-        response_format: { type: 'json_object' }
-      }),
-      signal: controller.signal
-    });
-    clearTimeout(timer);
-
-    if (!res.ok) {
-      console.warn('KIE.ai API HTTP Error:', res.status);
-      return getCategoryPresetFallback(storeName, category, description);
+  const candidateEndpoints = [
+    {
+      url: `https://api.kie.ai/${modelName}-openai/v1/chat/completions`,
+      type: 'openai'
+    },
+    {
+      url: `${userBaseUrl.replace(/\/+$/, '')}/chat/completions`,
+      type: 'openai'
+    },
+    {
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      type: 'gemini_direct'
     }
+  ];
 
-    const resJson = await res.json();
-    const rawContent = resJson.choices?.[0]?.message?.content || resJson.output || '';
-    
-    // Parse JSON safely
-    const cleanText = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
-    const data = JSON.parse(cleanText);
+  for (const ep of candidateEndpoints) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 7000);
 
-    if (data && data.profile && Array.isArray(data.products) && data.products.length > 0) {
-      return data;
+      let res;
+      if (ep.type === 'openai') {
+        res = await fetch(ep.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: modelName,
+            messages: [
+              { role: 'system', content: 'Anda adalah AI Instant Store Creator yang mengembalikan RAW JSON murni.' },
+              { role: 'user', content: prompt }
+            ],
+            response_format: { type: 'json_object' }
+          }),
+          signal: controller.signal
+        });
+      } else {
+        // gemini_direct
+        res = await fetch(ep.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          }),
+          signal: controller.signal
+        });
+      }
+
+      clearTimeout(timer);
+
+      if (res.ok) {
+        const resJson = await res.json();
+        let rawContent = '';
+        if (ep.type === 'openai') {
+          rawContent = resJson.choices?.[0]?.message?.content || resJson.output || '';
+        } else {
+          rawContent = resJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        }
+
+        const cleanText = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
+        const data = JSON.parse(cleanText);
+
+        if (data && data.profile && Array.isArray(data.products) && data.products.length > 0) {
+          console.log(`Successfully generated store content via ${ep.url}`);
+          return data;
+        }
+      }
+    } catch (err) {
+      console.warn(`KIE.ai Candidate Endpoint ${ep.url} failed:`, err.message);
     }
-    return getCategoryPresetFallback(storeName, category, description);
-  } catch (err) {
-    console.warn('KIE.ai API Exception / Timeout, executing Preset Fallback:', err.message);
-    return getCategoryPresetFallback(storeName, category, description);
   }
+
+  console.warn('All KIE endpoints failed or timed out. Executing Category Preset Fallback.');
+  return getCategoryPresetFallback(storeName, category, description);
 }
 
 // Master Onboarding Generator Server Action
