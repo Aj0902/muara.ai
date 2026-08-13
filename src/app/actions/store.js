@@ -606,7 +606,7 @@ export async function createOrder(storeId, customerName, customerPhone, serviceT
     if (itemsError) throw itemsError;
 
     revalidatePath('/admin/pesanan');
-    return { success: true, invoiceNumber, orderId: order.id };
+    return { success: true, invoiceNumber, orderId: order.id, orderToken: order.order_token };
   } catch (err) {
     console.error('Create Order Error:', err);
     return { error: 'Gagal membuat pesanan: ' + err.message };
@@ -787,23 +787,47 @@ export async function updateOrderProof(orderId, proofUrl) {
   try {
     const { data: order, error: fetchErr } = await supabase
       .from('orders')
-      .select('notes')
+      .select('*, stores(whatsapp, phone)')
       .eq('id', orderId)
-      .single();
+      .maybeSingle();
 
-    if (fetchErr) throw fetchErr;
+    if (fetchErr || !order) throw fetchErr || new Error('Order tidak ditemukan');
 
-    const updatedNotes = [order.notes, `Bukti Bayar (Cloudinary): ${proofUrl}`].filter(Boolean).join(' | ');
+    const updatedNotes = [order.notes, `Bukti Transfer: ${proofUrl}`].filter(Boolean).join(' | ');
 
-    const { error: updateErr } = await supabase
+    let { error: updateErr } = await supabase
       .from('orders')
-      .update({ notes: updatedNotes, status: 'paid' })
+      .update({
+        payment_proof_url: proofUrl,
+        notes: updatedNotes,
+        status: 'payment_uploaded'
+      })
       .eq('id', orderId);
 
-    if (updateErr) throw updateErr;
+    if (updateErr) {
+      console.warn('payment_proof_url update failed, using notes fallback:', updateErr.message);
+      const fallbackRes = await supabase
+        .from('orders')
+        .update({ notes: updatedNotes, status: 'payment_uploaded' })
+        .eq('id', orderId);
+      if (fallbackRes.error) throw fallbackRes.error;
+    }
+
+    // Trigger WhatsApp notification to UMKM Store Owner to verify payment
+    const storeWa = order.stores?.whatsapp || order.stores?.phone;
+    if (storeWa) {
+      const baseUrl = 'https://muara-ai.vercel.app';
+      const orderToken = order.order_token || order.id;
+      const textMessage = `📎 *BUKTI TRANSFER DITERIMA!*\n\n` +
+        `Pelanggan *${order.customer_name}* telah mengunggah bukti pembayaran untuk pesanan *#${order.invoice_number}* (Total: Rp ${Number(order.total_amount).toLocaleString('id-ID')}).\n\n` +
+        `Silakan verifikasi & konfirmasi pembayaran di:\n` +
+        `🔗 ${baseUrl}/pesanan/kelola/${orderToken}`;
+
+      await sendWhatsApp(storeWa, textMessage);
+    }
 
     revalidatePath('/admin/pesanan');
-    return { success: true };
+    return { success: true, orderToken: order.order_token };
   } catch (err) {
     console.error('Update Order Proof Error:', err);
     return { error: 'Gagal memperbarui bukti bayar: ' + err.message };

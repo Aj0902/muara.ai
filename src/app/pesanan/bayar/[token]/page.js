@@ -202,8 +202,8 @@ export default function CustomerPaymentPage() {
         </div>
       </div>
 
-      {/* Payment Section - Upload form when waiting for proof */}
-      {order.status === 'waiting_payment_proof' && (
+      {/* Payment Section - Upload form when pending or waiting for proof */}
+      {(order.status === 'pending' || order.status === 'waiting_payment_proof') && (
         <div className={styles.card}>
           <h3 className={styles.sectionTitle}>📤 Upload Bukti Transfer</h3>
           <p className={styles.uploadHint}>Foto atau screenshot bukti transfer pembayaran Anda (maks. 5MB)</p>

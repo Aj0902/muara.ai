@@ -684,25 +684,28 @@ export default function StorefrontCartProvider({ children, store }) {
       const cloudinaryUrl = uploadData.url;
 
       // Update bukti pembayaran di database Supabase via Server Action
+      let returnedToken = msg.orderToken || msg.orderId;
       if (msg.orderId) {
-        await updateOrderProof(msg.orderId, cloudinaryUrl);
+        const updateRes = await updateOrderProof(msg.orderId, cloudinaryUrl);
+        if (updateRes?.orderToken) returnedToken = updateRes.orderToken;
       }
 
-      // Update status kartu pembayaran di chat feed
+      // Update status kartu pembayaran di chat feed to payment_uploaded (Waiting Verification)
       setCartMessages(prev => prev.map(m => m.id === messageId ? { 
         ...m, 
-        status: 'paid', 
+        status: 'payment_uploaded',
+        orderToken: returnedToken,
         proofUrl: cloudinaryUrl,
         isUploadingProof: false 
       } : m));
 
-      // Kirim feedback gelembung chat AI sukses
+      // Kirim feedback gelembung chat AI menunggu verifikasi
       setCartMessages(prev => [
         ...prev,
         {
           id: generateUniqueId('ai'),
           sender: 'ai',
-          text: `Pembayaran Kakak untuk invoice *${msg.invoiceNumber}* telah berhasil diterima! 🎉 Status pesanan Kakak di dashboard toko otomatis berubah menjadi *Lunas (paid)*. Asisten AI akan memantau proses pesanan Kakak secara real-time! 🤖`
+          text: `Bukti transfer Kakak untuk invoice *${msg.invoiceNumber}* telah terkirim! ⏳ Penjual sedang memverifikasi pembayaran Kakak. Kakak akan menerima notifikasi WhatsApp begitu pembayaran dikonfirmasi oleh penjual.`
         }
       ]);
 
@@ -795,6 +798,7 @@ export default function StorefrontCartProvider({ children, store }) {
             paymentMethod: paymentMethod,
             bankOption: bankOption,
             orderId: res.orderId,
+            orderToken: res.orderToken || res.orderId,
             status: 'pending',
             proofUrl: ''
           }
@@ -1014,8 +1018,19 @@ export default function StorefrontCartProvider({ children, store }) {
                             />
                           </div>
                           {msg.isUploadingProof && (
-                            <p className="text-[9px] text-amber-500 font-bold mt-1 text-center animate-pulse">⏳ Sedang mengunggah ke Cloudinary...</p>
+                            <p className="text-[9px] text-amber-500 font-bold mt-1 text-center animate-pulse">⏳ Sedang mengunggah bukti transfer...</p>
                           )}
+
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <a
+                              href={`/pesanan/bayar/${msg.orderToken || msg.orderId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block w-full text-center py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-[11px] transition-all shadow-sm"
+                            >
+                              🧾 Buka Halaman Tagihan Lengkap
+                            </a>
+                          </div>
                         </div>
                       </div>
                     ) : (
