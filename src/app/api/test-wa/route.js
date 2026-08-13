@@ -19,11 +19,10 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const phone = searchParams.get('phone');
   const customKey = searchParams.get('key');
-  const customSession = searchParams.get('session');
 
   const rawUrl = process.env.WAHA_API_URL;
   const rawApiKey = customKey || process.env.WAHA_API_KEY;
-  const session = customSession?.trim() || process.env.WAHA_SESSION?.trim() || 'muara';
+  const session = 'muara'; // Permanently set session to 'muara'
 
   if (!rawUrl) {
     return NextResponse.json({
@@ -51,7 +50,7 @@ export async function GET(request) {
   const payload = {
     session,
     chatId,
-    text: '🧪 Tes Notifikasi WAHA API dari CMS UMKM!'
+    text: '🧪 Tes Notifikasi WAHA API dari CMS UMKM (muara-ai.vercel.app)!'
   };
 
   const headers = { 'Content-Type': 'application/json' };

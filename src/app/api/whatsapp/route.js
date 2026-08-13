@@ -17,11 +17,11 @@ function normalizePhone(rawPhone) {
 
 export async function POST(request) {
   try {
-    const { to, message, session: reqSession } = await request.json();
+    const { to, message } = await request.json();
 
     const rawUrl = process.env.WAHA_API_URL;
     const apiKey = process.env.WAHA_API_KEY?.trim();
-    const session = reqSession?.trim() || process.env.WAHA_SESSION?.trim() || 'muara';
+    const session = 'muara'; // Permanently set session to 'muara'
 
     if (!rawUrl) {
       return NextResponse.json({

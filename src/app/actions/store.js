@@ -23,18 +23,14 @@ function normalizePhone(rawPhone) {
 
 function getBaseUrl() {
   if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/+$/, '');
-  if (process.env.VERCEL_URL) {
-    const url = process.env.VERCEL_URL;
-    return url.startsWith('http') ? url : `https://${url}`;
-  }
-  return 'http://localhost:3000';
+  return 'https://muara-ai.vercel.app';
 }
 
 // Helper to send WA message via WAHA API directly
 async function sendWhatsApp(to, message) {
   const rawUrl = process.env.WAHA_API_URL;
   const apiKey = process.env.WAHA_API_KEY?.trim();
-  const session = process.env.WAHA_SESSION?.trim() || 'muara';
+  const session = 'muara'; // Permanently set session to 'muara'
 
   if (!rawUrl || !to || !message) {
     console.warn('WAHA Notification skipped: Missing WAHA_API_URL, target phone, or message text', { hasUrl: !!rawUrl, to });
