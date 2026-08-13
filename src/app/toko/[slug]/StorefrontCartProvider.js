@@ -1733,7 +1733,7 @@ export default function StorefrontCartProvider({ children, store }) {
                   <span>Subtotal Produk:</span>
                   <span>Rp {cartSubtotal.toLocaleString('id-ID')}</span>
                 </div>
-                {((store.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping') && (
+                {serviceType === 'shipping' && ongkirPrice > 0 && (
                   <div className="flex justify-between text-slate-500">
                     <span>Ongkos Kirim ({courier.split(' - ')[0]}):</span>
                     <span>Rp {ongkirPrice.toLocaleString('id-ID')}</span>
@@ -1743,7 +1743,7 @@ export default function StorefrontCartProvider({ children, store }) {
                 <div className="flex justify-between font-bold text-slate-800 dark:text-white text-sm">
                   <span>TOTAL PEMBAYARAN:</span>
                   <span className="text-orange-600 dark:text-orange-400">
-                    Rp {(((store.category || 'kuliner').toLowerCase() === 'fashion' && serviceType === 'shipping') ? (cartSubtotal + ongkirPrice) : cartSubtotal).toLocaleString('id-ID')}
+                    Rp {(serviceType === 'shipping' && ongkirPrice > 0 ? (cartSubtotal + ongkirPrice) : cartSubtotal).toLocaleString('id-ID')}
                   </span>
                 </div>
               </div>

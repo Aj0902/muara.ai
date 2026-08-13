@@ -714,12 +714,11 @@ export default function ProfileForm({ store }) {
           </div>
         </div>
 
-        {/* Pengaturan Pembayaran (Hanya Kategori Fashion) */}
-        {store?.category === 'fashion' && (
-          <div className="space-y-6">
-            <h4 className="font-bold text-sm text-slate-700 mb-2 border-l-4 border-orange-500 pl-3 uppercase tracking-wider">
-              4. Pengaturan Pembayaran (Fashion Category)
-            </h4>
+        {/* Pengaturan Pembayaran (Untuk Semua Kategori Toko) */}
+        <div className="space-y-6">
+          <h4 className="font-bold text-sm text-slate-700 mb-2 border-l-4 border-orange-500 pl-3 uppercase tracking-wider">
+            4. Pengaturan Pembayaran (QRIS Merchant & Rekening Bank)
+          </h4>
             
             {/* Bagian QRIS (Uploader & Status Saja) */}
             <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/50 dark:border-slate-800/50 space-y-4">
@@ -923,7 +922,6 @@ export default function ProfileForm({ store }) {
               )}
             </div>
           </div>
-        )}
 
         {/* Submit Button */}
         <div className="flex justify-end pt-5 border-t border-slate-100">
