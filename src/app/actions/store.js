@@ -30,78 +30,54 @@ function getBaseUrl() {
   return 'http://localhost:3000';
 }
 
-// Helper to send WA message via WAHA API
-async function sendWhatsApp(to, message) {
-  const rawUrl = process.env.WAHA_API_URL;
-  const rawApiKey = process.env.WAHA_API_KEY;
+// Helper to send notification to n8n webhook or WAHA API
+async function sendWhatsApp(to, message, extraData = {}) {
+  const targetUrl = process.env.N8N_WEBHOOK_URL || process.env.WAHA_API_URL;
+  const apiKey = process.env.WAHA_API_KEY?.trim();
   const session = process.env.WAHA_SESSION?.trim() || 'muara';
 
-  if (!rawUrl || !rawApiKey || !to) {
-    console.warn('WAHA: Missing API URL, Key, or Target Phone', { hasUrl: !!rawUrl, hasKey: !!rawApiKey, to });
-    return { success: false, error: 'Missing WAHA config or recipient phone' };
+  if (!targetUrl || !to) {
+    console.warn('Notification skipped: Missing N8N_WEBHOOK_URL / WAHA_API_URL or phone number', { hasUrl: !!targetUrl, to });
+    return { success: false, error: 'Missing webhook URL or phone' };
   }
 
-  const url = rawUrl.trim().replace(/\/+$/, '');
-  const apiKey = rawApiKey.trim();
+  let url = targetUrl.trim();
+  if (!url.includes('/api/sendText') && !url.includes('webhook') && !url.includes('n8n')) {
+    url = url.replace(/\/+$/, '') + '/api/sendText';
+  }
+
   const cleanPhone = normalizePhone(to);
   const chatId = `${cleanPhone}@c.us`;
-  const payload = { session, chatId, text: message };
+
+  const payload = {
+    event: extraData.event || 'notification',
+    to: cleanPhone,
+    phone: cleanPhone,
+    chatId,
+    session,
+    text: message,
+    message,
+    ...extraData
+  };
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (apiKey) {
+    headers['X-Api-Key'] = apiKey;
+  }
 
   try {
-    // Attempt 1: Header X-Api-Key
-    let res = await fetch(`${url}/api/sendText`, {
+    const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': apiKey
-      },
+      headers,
       body: JSON.stringify(payload)
     });
-
-    let resText = await res.text();
+    const resText = await res.text();
     let data;
     try { data = JSON.parse(resText); } catch { data = resText; }
-
-    // Attempt 2: x-api-key query parameter fallback if 401
-    if (res.status === 401) {
-      const res2 = await fetch(`${url}/api/sendText?x-api-key=${encodeURIComponent(apiKey)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const resText2 = await res2.text();
-      let data2;
-      try { data2 = JSON.parse(resText2); } catch { data2 = resText2; }
-      if (res2.ok) {
-        res = res2;
-        data = data2;
-      }
-    }
-
-    // Attempt 3: Authorization Bearer header fallback if still 401
-    if (res.status === 401) {
-      const res3 = await fetch(`${url}/api/sendText`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(payload)
-      });
-      const resText3 = await res3.text();
-      let data3;
-      try { data3 = JSON.parse(resText3); } catch { data3 = resText3; }
-      if (res3.ok) {
-        res = res3;
-        data = data3;
-      }
-    }
-
-    if (!res.ok) throw new Error(typeof data === 'object' ? (data.message || data.error || JSON.stringify(data)) : data);
-    console.log('WhatsApp sent successfully to', chatId, ':', data);
+    console.log('Webhook / WA notification sent to', cleanPhone, ':', data);
     return { success: true, data };
   } catch (e) {
-    console.error('Failed to send WhatsApp to', chatId, ':', e.message || e);
+    console.error('Failed to send webhook / WA notification:', e.message || e);
     return { success: false, error: e.message || e };
   }
 }
@@ -607,9 +583,21 @@ export async function createOrder(storeId, customerName, customerPhone, serviceT
       .single();
     if (!storeError && storeData?.whatsapp) {
       const baseUrl = getBaseUrl();
-      await sendWhatsApp(storeData.whatsapp, `Pesanan baru ${invoiceNumber}. Detail: ${baseUrl}/pesanan/kelola/${orderToken}`);
+      await sendWhatsApp(
+        storeData.whatsapp,
+        `Pesanan baru ${invoiceNumber}. Detail: ${baseUrl}/pesanan/kelola/${orderToken}`,
+        {
+          event: 'order_created',
+          invoiceNumber,
+          orderToken,
+          totalAmount,
+          customerName,
+          customerPhone: customerPhone,
+          manageUrl: `${baseUrl}/pesanan/kelola/${orderToken}`
+        }
+      );
     } else {
-      console.warn('WAHA: Store WhatsApp number missing or store query error:', storeError, storeData);
+      console.warn('Webhook / WAHA: Store WhatsApp number missing or store query error:', storeError, storeData);
     }
     const orderItems = items.map((item) => ({
       order_id: order.id,

@@ -1,15 +1,32 @@
 import { NextResponse } from 'next/server';
 
+function normalizePhone(rawPhone) {
+  if (!rawPhone) return '';
+  let phone = String(rawPhone).replace(/[^0-9]/g, '');
+  if (phone.startsWith('6208')) {
+    phone = '62' + phone.slice(4);
+  } else if (phone.startsWith('08')) {
+    phone = '62' + phone.slice(1);
+  } else if (phone.startsWith('0')) {
+    phone = '62' + phone.slice(1);
+  } else if (!phone.startsWith('62')) {
+    phone = '62' + phone;
+  }
+  return phone;
+}
+
 export async function POST(request) {
   try {
-    const { to, message, session: reqSession } = await request.json();
-    const rawUrl = process.env.WAHA_API_URL;
-    const rawApiKey = process.env.WAHA_API_KEY;
-    const session = reqSession?.trim() || process.env.WAHA_SESSION?.trim() || 'muara';
+    const body = await request.json();
+    const { to, message } = body;
 
-    if (!rawUrl || !rawApiKey) {
+    const targetUrl = process.env.N8N_WEBHOOK_URL || process.env.WAHA_API_URL;
+    const apiKey = process.env.WAHA_API_KEY?.trim();
+    const session = body.session?.trim() || process.env.WAHA_SESSION?.trim() || 'muara';
+
+    if (!targetUrl) {
       return NextResponse.json({
-        error: 'WAHA_API_URL atau WAHA_API_KEY belum dikonfigurasi di Environment Variables.'
+        error: 'N8N_WEBHOOK_URL atau WAHA_API_URL belum dikonfigurasi di Environment Variables.'
       }, { status: 500 });
     }
 
@@ -17,76 +34,39 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Nomor tujuan (to) dan pesan (message) wajib diisi.' }, { status: 400 });
     }
 
-    const url = rawUrl.trim().replace(/\/+$/, '');
-    const apiKey = rawApiKey.trim();
-
-    // Normalize phone: strip +, ensure 62 prefix, append @c.us
-    let phone = to.replace(/[^0-9]/g, '');
-    if (phone.startsWith('6208')) {
-      phone = '62' + phone.slice(4);
-    } else if (phone.startsWith('08')) {
-      phone = '62' + phone.slice(2);
-    } else if (phone.startsWith('0')) {
-      phone = '62' + phone.slice(1);
-    } else if (!phone.startsWith('62')) {
-      phone = '62' + phone;
+    let url = targetUrl.trim();
+    if (!url.includes('/api/sendText') && !url.includes('webhook') && !url.includes('n8n')) {
+      url = url.replace(/\/+$/, '') + '/api/sendText';
     }
-    const chatId = `${phone}@c.us`;
+
+    const cleanPhone = normalizePhone(to);
+    const chatId = `${cleanPhone}@c.us`;
 
     const payload = {
-      session,
+      event: body.event || 'notification',
+      to: cleanPhone,
+      phone: cleanPhone,
       chatId,
-      text: message
+      session,
+      text: message,
+      message,
+      ...body
     };
 
-    // Attempt 1: Header X-Api-Key
-    let res = await fetch(`${url}/api/sendText`, {
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) {
+      headers['X-Api-Key'] = apiKey;
+    }
+
+    const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': apiKey
-      },
+      headers,
       body: JSON.stringify(payload)
     });
 
-    let resText = await res.text();
+    const resText = await res.text();
     let data;
     try { data = JSON.parse(resText); } catch { data = resText; }
-
-    // Attempt 2: Query param fallback if 401
-    if (res.status === 401) {
-      const res2 = await fetch(`${url}/api/sendText?x-api-key=${encodeURIComponent(apiKey)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const resText2 = await res2.text();
-      let data2;
-      try { data2 = JSON.parse(resText2); } catch { data2 = resText2; }
-      if (res2.ok) {
-        res = res2;
-        data = data2;
-      }
-    }
-
-    // Attempt 3: Authorization Bearer header fallback if still 401
-    if (res.status === 401) {
-      const res3 = await fetch(`${url}/api/sendText`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(payload)
-      });
-      const resText3 = await res3.text();
-      let data3;
-      try { data3 = JSON.parse(resText3); } catch { data3 = resText3; }
-      if (res3.ok) {
-        res = res3;
-        data = data3;
-      }
-    }
 
     if (!res.ok) {
       return NextResponse.json({
@@ -97,7 +77,7 @@ export async function POST(request) {
 
     return NextResponse.json({ success: true, data });
   } catch (e) {
-    console.error('WAHA API Route error:', e);
+    console.error('Webhook / WAHA Route error:', e);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }

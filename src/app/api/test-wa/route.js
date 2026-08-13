@@ -1,106 +1,93 @@
 import { NextResponse } from 'next/server';
 
+function normalizePhone(rawPhone) {
+  if (!rawPhone) return '';
+  let phone = String(rawPhone).replace(/[^0-9]/g, '');
+  if (phone.startsWith('6208')) {
+    phone = '62' + phone.slice(4);
+  } else if (phone.startsWith('08')) {
+    phone = '62' + phone.slice(1);
+  } else if (phone.startsWith('0')) {
+    phone = '62' + phone.slice(1);
+  } else if (!phone.startsWith('62')) {
+    phone = '62' + phone;
+  }
+  return phone;
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const phone = searchParams.get('phone');
   const customKey = searchParams.get('key');
   const customSession = searchParams.get('session');
 
-  const rawUrl = process.env.WAHA_API_URL;
+  const rawUrl = process.env.N8N_WEBHOOK_URL || process.env.WAHA_API_URL;
   const rawApiKey = customKey || process.env.WAHA_API_KEY;
   const session = customSession?.trim() || process.env.WAHA_SESSION?.trim() || 'muara';
 
   if (!rawUrl) {
     return NextResponse.json({
-      error: 'Environment variable WAHA_API_URL is missing in Vercel'
-    }, { status: 400 });
-  }
-
-  if (!rawApiKey) {
-    return NextResponse.json({
-      error: 'Environment variable WAHA_API_KEY is missing in Vercel. You can also pass &key=YOUR_KEY in URL to test.',
+      error: 'Environment variable N8N_WEBHOOK_URL (atau WAHA_API_URL) belum ada di Vercel'
     }, { status: 400 });
   }
 
   if (!phone) {
     return NextResponse.json({
-      message: 'WAHA diagnostic endpoint ready. Add ?phone=08xxxxxxxxxx to test. You can also pass &key=YOUR_KEY or &session=muara if testing.',
+      message: 'Diagnostik n8n Webhook / WAHA Siap. Tambahkan ?phone=08xxxxxxxxxx di URL untuk tes kirim JSON payload ke webhook Anda.',
       config: {
-        url: rawUrl.trim().replace(/\/+$/, ''),
+        targetUrl: rawUrl.trim(),
         session,
-        apiKeyFirstChars: rawApiKey.substring(0, 4) + '***'
+        hasApiKey: !!rawApiKey
       }
     });
   }
 
-  const url = rawUrl.trim().replace(/\/+$/, '');
-  const apiKey = rawApiKey.trim();
+  let url = rawUrl.trim();
+  if (!url.includes('/api/sendText') && !url.includes('webhook') && !url.includes('n8n')) {
+    url = url.replace(/\/+$/, '') + '/api/sendText';
+  }
 
-  let cleanPhone = phone.replace(/[^0-9]/g, '');
-  if (cleanPhone.startsWith('08')) cleanPhone = '62' + cleanPhone.slice(1);
-  if (!cleanPhone.startsWith('62')) cleanPhone = '62' + cleanPhone;
+  const cleanPhone = normalizePhone(phone);
   const chatId = `${cleanPhone}@c.us`;
 
-  const targetEndpoint = `${url}/api/sendText`;
-
   const payload = {
-    session,
+    event: 'test_notification',
+    to: cleanPhone,
+    phone: cleanPhone,
     chatId,
-    text: '🧪 Tes Notifikasi WhatsApp dari CMS UMKM!'
+    session,
+    text: '🧪 Tes Notifikasi n8n Webhook / WhatsApp dari CMS UMKM!'
   };
 
+  const headers = { 'Content-Type': 'application/json' };
+  if (rawApiKey) {
+    headers['X-Api-Key'] = rawApiKey.trim();
+  }
+
   try {
-    // Attempt 1: X-Api-Key header
-    let res = await fetch(targetEndpoint, {
+    const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': apiKey
-      },
+      headers,
       body: JSON.stringify(payload)
     });
 
-    let resText = await res.text();
+    const resText = await res.text();
     let data;
     try { data = JSON.parse(resText); } catch { data = resText; }
-
-    // Attempt 2: x-api-key query parameter fallback if 401
-    let attemptUsed = 'X-Api-Key header';
-    if (res.status === 401) {
-      const urlWithKey = `${targetEndpoint}?x-api-key=${encodeURIComponent(apiKey)}`;
-      const res2 = await fetch(urlWithKey, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const resText2 = await res2.text();
-      let data2;
-      try { data2 = JSON.parse(resText2); } catch { data2 = resText2; }
-      if (res2.ok) {
-        res = res2;
-        data = data2;
-        attemptUsed = 'x-api-key query parameter';
-      }
-    }
 
     return NextResponse.json({
       success: res.ok,
       httpStatus: res.status,
-      attemptUsed,
-      targetEndpoint,
-      chatId,
-      session,
+      targetUrl: url,
       payloadSent: payload,
-      apiKeyUsedPreview: apiKey.substring(0, 4) + '***' + apiKey.substring(Math.max(0, apiKey.length - 2)),
-      wahaResponse: data
+      webhookResponse: data
     });
   } catch (err) {
     return NextResponse.json({
       success: false,
       error: err.message,
-      targetEndpoint,
-      chatId,
-      session
+      targetUrl: url,
+      payloadSent: payload
     }, { status: 500 });
   }
 }
