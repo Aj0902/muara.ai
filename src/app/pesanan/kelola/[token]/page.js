@@ -4,9 +4,25 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import styles from '../../../orderPage.module.css';
 
+function normalizePhone(rawPhone) {
+  if (!rawPhone) return '';
+  let phone = String(rawPhone).replace(/[^0-9]/g, '');
+  if (phone.startsWith('6208')) {
+    phone = '62' + phone.slice(4);
+  } else if (phone.startsWith('08')) {
+    phone = '62' + phone.slice(1);
+  } else if (phone.startsWith('0')) {
+    phone = '62' + phone.slice(1);
+  } else if (!phone.startsWith('62')) {
+    phone = '62' + phone;
+  }
+  return phone;
+}
+
 export default function UMKMOrderPage() {
   const routeParams = useParams();
   const token = routeParams?.token;
+
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState('');
@@ -17,8 +33,8 @@ export default function UMKMOrderPage() {
     try {
       const res = await fetch(`/api/orders/${token}`);
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setOrder(data.order);
+      if (data.error) setError(data.error);
+      else setOrder(data.order);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -26,36 +42,60 @@ export default function UMKMOrderPage() {
     }
   }, [token]);
 
-  useEffect(() => { fetchOrder(); }, [fetchOrder]);
+  useEffect(() => {
+    let ignore = false;
+    async function load() {
+      if (!token) return;
+      try {
+        const res = await fetch(`/api/orders/${token}`);
+        const data = await res.json();
+        if (!ignore) {
+          if (data.error) setError(data.error);
+          else setOrder(data.order);
+        }
+      } catch (e) {
+        if (!ignore) setError(e.message);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+    load();
+    return () => { ignore = true; };
+  }, [token]);
 
+  // REDIRECT DIRECTLY TO WHATSAPP WEB / APP FOR UMKM OWNER TO SEND INVOICE
   const handleTagih = async () => {
+    if (!order) return;
     setActionLoading('tagih');
     try {
-      const baseUrl = window.location.origin;
-      const message = `Halo ${order.customer_name}, berikut detail tagihan pesanan Anda (${order.invoice_number}):\n\nTotal: Rp ${Number(order.total_amount).toLocaleString('id-ID')}\n\nSilakan lakukan pembayaran dan upload bukti transfer di link berikut:\n${baseUrl}/pesanan/bayar/${token}\n\nTerima kasih! 🙏`;
-      
-      await fetch('/api/whatsapp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: order.customer_phone, message })
-      });
-
+      // Update order status to waiting_payment_proof
       await fetch(`/api/orders/${token}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'waiting_payment_proof' })
       });
 
+      const baseUrl = 'https://muara-ai.vercel.app';
+      const cleanPhone = normalizePhone(order.customer_phone);
+      const textMessage = `Halo ${order.customer_name}, berikut detail tagihan pesanan Anda (#${order.invoice_number}):\n\n` +
+        `💰 *Total:* Rp ${Number(order.total_amount).toLocaleString('id-ID')}\n\n` +
+        `Silakan lakukan pembayaran dan upload bukti transfer di link berikut:\n` +
+        `🔗 ${baseUrl}/pesanan/bayar/${token}\n\n` +
+        `Terima kasih! 🙏`;
+
+      // Redirect directly to WhatsApp chat
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(textMessage)}`, '_blank');
+
       await fetchOrder();
     } catch (e) {
-      alert('Gagal mengirim tagihan: ' + e.message);
+      alert('Gagal memperbarui status: ' + e.message);
     } finally {
       setActionLoading('');
     }
   };
 
   const handleConfirm = async () => {
-    if (!confirm('Konfirmasi bahwa pembayaran sudah diterima?')) return;
+    if (!confirm('Konfirmasi bahwa pembayaran sudah diverifikasi & lunas?')) return;
     setActionLoading('confirm');
     try {
       await fetch(`/api/orders/${token}`, {
@@ -64,14 +104,19 @@ export default function UMKMOrderPage() {
         body: JSON.stringify({ status: 'paid' })
       });
 
-      // Notify customer
-      const baseUrl = window.location.origin;
+      // Notify customer via WA
+      const baseUrl = 'https://muara-ai.vercel.app';
+      const textMessage = `✅ *PEMBAYARAN DIVERIFIKASI & LUNAS!*\n\n` +
+        `Pembayaran Anda untuk pesanan #${order.invoice_number} telah dikonfirmasi & diverifikasi oleh penjual. Pesanan Anda sedang diproses!\n\n` +
+        `🔗 *Cek Status:* ${baseUrl}/pesanan/bayar/${token}\n\n` +
+        `Terima kasih! 🎉`;
+
       await fetch('/api/whatsapp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          to: order.customer_phone, 
-          message: `✅ Pembayaran pesanan ${order.invoice_number} telah dikonfirmasi! Pesanan Anda sedang diproses.\n\nCek status: ${baseUrl}/pesanan/bayar/${token}\n\nTerima kasih! 🎉` 
+        body: JSON.stringify({
+          to: order.customer_phone,
+          message: textMessage
         })
       });
 
@@ -93,13 +138,16 @@ export default function UMKMOrderPage() {
         body: JSON.stringify({ status: 'cancelled' })
       });
 
-      // Notify customer
+      // Notify customer via WA
+      const textMessage = `❌ *PEMBAYARAN DITOLAK*\n\n` +
+        `Pembayaran untuk pesanan #${order.invoice_number} ditolak oleh penjual. Silakan hubungi penjual untuk informasi lebih lanjut.`;
+
       await fetch('/api/whatsapp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          to: order.customer_phone, 
-          message: `❌ Pembayaran pesanan ${order.invoice_number} ditolak oleh penjual. Silakan hubungi toko untuk informasi lebih lanjut.` 
+        body: JSON.stringify({
+          to: order.customer_phone,
+          message: textMessage
         })
       });
 
@@ -112,14 +160,18 @@ export default function UMKMOrderPage() {
   };
 
   const statusLabels = {
-    pending: '🕐 Menunggu Dikirim',
+    pending: '🕐 Menunggu Dikirim Tagihan',
     waiting_payment_proof: '⏳ Menunggu Bukti Transfer',
-    payment_uploaded: '📎 Bukti Transfer Diterima',
-    paid: '✅ Lunas',
+    payment_uploaded: '📎 Bukti Transfer Diterima (Perlu Verifikasi)',
+    paid: '✅ Lunas & Diverifikasi',
     completed: '✅ Selesai',
     cancelled: '❌ Dibatalkan',
     ready: '📦 Siap'
   };
+
+  // Extract payment method from notes
+  const paymentMethodMatch = order?.notes?.match(/Metode Bayar:\s*([^|]+)/i);
+  const paymentMethodText = paymentMethodMatch ? paymentMethodMatch[1].trim() : 'Transfer / QRIS';
 
   if (loading) return (
     <div className={styles.container}>
@@ -128,11 +180,11 @@ export default function UMKMOrderPage() {
     </div>
   );
 
-  if (error) return (
+  if (error || !order) return (
     <div className={styles.container}>
       <div className={styles.errorCard}>
         <h2>❌ Pesanan Tidak Ditemukan</h2>
-        <p>{error}</p>
+        <p>{error || 'Maaf, pesanan dengan token ini tidak ditemukan.'}</p>
       </div>
     </div>
   );
@@ -167,6 +219,13 @@ export default function UMKMOrderPage() {
       </div>
 
       <div className={styles.card}>
+        <h3 className={styles.sectionTitle}>💳 Metode Pembayaran</h3>
+        <div className={styles.paymentMethodBadge}>
+          {paymentMethodText}
+        </div>
+      </div>
+
+      <div className={styles.card}>
         <h3 className={styles.sectionTitle}>🛒 Daftar Item</h3>
         <div className={styles.itemList}>
           {order.order_items?.map((item) => (
@@ -192,7 +251,7 @@ export default function UMKMOrderPage() {
 
       {order.payment_proof_url && (
         <div className={styles.card}>
-          <h3 className={styles.sectionTitle}>🧾 Bukti Pembayaran</h3>
+          <h3 className={styles.sectionTitle}>🧾 Bukti Transfer Uploaded</h3>
           <img src={order.payment_proof_url} alt="Bukti Transfer" className={styles.proofImage} />
         </div>
       )}
@@ -201,7 +260,7 @@ export default function UMKMOrderPage() {
       <div className={styles.actionArea}>
         {order.status === 'pending' && (
           <button className={styles.actionBtn} onClick={handleTagih} disabled={!!actionLoading}>
-            {actionLoading === 'tagih' ? '⏳ Mengirim...' : '📩 Tagih Pelanggan via WhatsApp'}
+            {actionLoading === 'tagih' ? '⏳ Membuka WhatsApp...' : '📩 Tagih Pelanggan via WhatsApp (Redirect)'}
           </button>
         )}
 
@@ -209,14 +268,14 @@ export default function UMKMOrderPage() {
           <div className={styles.waitingCard}>
             <div className={styles.waitingPulse}></div>
             <p>Menunggu pelanggan mengunggah bukti transfer...</p>
-            <button className={styles.refreshBtn} onClick={fetchOrder}>🔄 Refresh</button>
+            <button className={styles.refreshBtn} onClick={fetchOrder}>🔄 Refresh Status</button>
           </div>
         )}
 
         {order.status === 'payment_uploaded' && (
           <>
             <button className={styles.actionBtn} onClick={handleConfirm} disabled={!!actionLoading}>
-              {actionLoading === 'confirm' ? '⏳ Memproses...' : '✅ Konfirmasi Lunas'}
+              {actionLoading === 'confirm' ? '⏳ Verifikasi...' : '✅ Konfirmasi Lunas & Verifikasi'}
             </button>
             <button className={styles.actionBtnReject} onClick={handleReject} disabled={!!actionLoading}>
               {actionLoading === 'reject' ? '⏳ Memproses...' : '❌ Tolak Pembayaran'}
@@ -226,7 +285,7 @@ export default function UMKMOrderPage() {
 
         {order.status === 'paid' && (
           <div className={styles.successCard}>
-            <p>🎉 Pembayaran sudah dikonfirmasi! Pesanan sedang diproses.</p>
+            <p>🎉 Pembayaran sudah diverifikasi lunas! Pesanan sedang diproses.</p>
           </div>
         )}
 

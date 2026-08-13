@@ -109,6 +109,32 @@
   letter-spacing: 0.5px;
 }
 
+.paymentMethodBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.4rem 0.9rem;
+  border-radius: 10px;
+  margin-bottom: 0.6rem;
+}
+
+.paymentInstruction {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.highlightAmount {
+  color: #22c55e;
+  font-weight: 700;
+}
+
 /* === INFO GRID === */
 .infoGrid {
   display: flex;
