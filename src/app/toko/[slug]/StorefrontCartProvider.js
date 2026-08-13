@@ -397,10 +397,10 @@ export default function StorefrontCartProvider({ children, store }) {
       sender: 'ai',
       text:
         (store.category || 'kuliner').toLowerCase() === 'fashion'
-          ? `Halo kak! 👗 Saya Asisten AI dari ${store.name}. Ada yang bisa saya bantu hari ini? Kakak bisa tanya rekomendasi busana/OOTD, panduan ukuran (size chart), lokasi toko, atau lacak status pesanan.`
+          ? `Halo Kak! 👗 Selamat datang di ${store.name}. Ada yang bisa saya bantu hari ini? Kakak bisa tanya rekomendasi busana/OOTD, size chart, atau lokasi toko.`
           : (store.category || 'kuliner').toLowerCase() === 'kriya'
-          ? `Halo kak! 🛠️ Saya Asisten AI dari ${store.name}. Ada yang bisa saya bantu hari ini? Kakak bisa tanya katalog kerajinan rotan, spesifikasi custom PO, lokasi toko, atau lacak status pesanan.`
-          : `Halo kak! 🍽️ Saya Asisten CS AI dari ${store.name}. Ada yang bisa saya bantu hari ini? Kakak bisa tanya soal menu lezat, jam buka, lokasi toko, atau lacak status pesanan.`
+          ? `Halo Kak! 🛠️ Selamat datang di ${store.name}. Ada yang bisa saya bantu untuk kebutuhan kerajinan rotan & perabotan Kakak hari ini?`
+          : `Halo Kak! 🍽️ Selamat datang di ${store.name}. Mau cari kuliner lezat apa nih hari ini? Ada yang bisa saya bantu?`
     }
   ]);
 
