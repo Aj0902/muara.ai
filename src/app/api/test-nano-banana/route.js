@@ -52,14 +52,13 @@ export async function GET() {
     }, { status: 200 });
   }
 
-  // 2. Poll Task Details via the exact confirmed endpoint: recordInfo?taskId=
+  // 2. Poll Task Details (Up to 10 attempts = 20 seconds)
   const pollingEndpoint = `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${taskId}`;
   let finalResult = null;
   let imageUrl = null;
   let attempts = 0;
 
-  // Poll up to 5 times (10 seconds total)
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 10; i++) {
     attempts++;
     await new Promise((r) => setTimeout(r, 2000));
     try {
@@ -81,7 +80,7 @@ export async function GET() {
           }
         }
 
-        imageUrl = taskData.resultUrl || parsedResultJson?.resultUrl || parsedResultJson?.url || taskData.imageUrl;
+        imageUrl = taskData.resultUrl || parsedResultJson?.resultUrl || parsedResultJson?.url || parsedResultJson?.images?.[0] || taskData.imageUrl;
 
         if (state === 'success' || state === 'completed' || imageUrl) {
           break;
@@ -93,13 +92,13 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    status: 'SUCCESS',
-    message: imageUrl ? '✅ Render Gambar Nano-Banana-2 Selesai!' : '⏳ Task Dibuat & Sedang Di-render oleh KIE GPU...',
+    status: imageUrl ? 'SUCCESS' : 'GPU_PROCESSING',
+    message: imageUrl ? '✅ Render Gambar Nano-Banana-2 Selesai!' : '⏳ Task Dibuat & GPU KIE.ai Sedang Menghasilkan Gambar (Refresh kembali dalam 5-10 detik)...',
     taskId,
     pollingEndpoint,
     attempts,
     taskState: finalResult?.data?.state || 'waiting',
-    imageUrl: imageUrl || 'Gambar masih di-render oleh KIE GPU. Silakan refresh halaman dalam beberapa detik.',
+    imageUrl: imageUrl || null,
     creditsConsumed: finalResult?.data?.creditsConsumed || 8,
     finalResult
   }, { status: 200 });
