@@ -299,11 +299,21 @@ export async function POST(req) {
         clearTimeout(timeoutId);
 
         if (response.ok) {
-          const data = await response.json();
-          if (data && typeof data === 'object') {
-            replyText = data.reply || data.text || (typeof data === 'string' ? data : '');
-          } else if (typeof data === 'string') {
-            replyText = data;
+          const resText = await response.text();
+          try {
+            const data = JSON.parse(resText);
+            if (Array.isArray(data) && data.length > 0) {
+              const item = data[0];
+              const inner = item.json || item;
+              replyText = inner.reply || inner.text || inner.output || inner.message || (typeof inner === 'string' ? inner : '');
+            } else if (data && typeof data === 'object') {
+              const inner = data.json || data;
+              replyText = inner.reply || inner.text || inner.output || inner.message || (typeof inner === 'string' ? inner : '');
+            } else if (typeof data === 'string') {
+              replyText = data;
+            }
+          } catch {
+            replyText = resText;
           }
         }
       } catch (err) {
