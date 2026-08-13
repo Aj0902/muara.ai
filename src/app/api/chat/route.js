@@ -18,6 +18,50 @@ function normalizePhone(rawPhone) {
   return phone;
 }
 
+function extractReplyText(input) {
+  if (!input) return '';
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        const extracted = extractReplyText(parsed);
+        if (extracted) return extracted;
+      } catch {
+        return trimmed;
+      }
+    }
+    return trimmed;
+  }
+  if (Array.isArray(input)) {
+    for (const item of input) {
+      const res = extractReplyText(item);
+      if (res) return res;
+    }
+    return '';
+  }
+  if (typeof input === 'object') {
+    if (input.reply && typeof input.reply === 'string') return input.reply;
+    if (input.output && typeof input.output === 'string') return input.output;
+    if (input.text && typeof input.text === 'string') return input.text;
+    if (input.message && typeof input.message === 'string') return input.message;
+
+    if (input.reply) { const res = extractReplyText(input.reply); if (res) return res; }
+    if (input.output) { const res = extractReplyText(input.output); if (res) return res; }
+    if (input.json) { const res = extractReplyText(input.json); if (res) return res; }
+    if (input.data) { const res = extractReplyText(input.data); if (res) return res; }
+    if (input.body) { const res = extractReplyText(input.body); if (res) return res; }
+    if (input.text) { const res = extractReplyText(input.text); if (res) return res; }
+    if (input.message) { const res = extractReplyText(input.message); if (res) return res; }
+
+    for (const val of Object.values(input)) {
+      const res = extractReplyText(val);
+      if (res) return res;
+    }
+  }
+  return '';
+}
+
 // Generate Category Specific Vocabulary & Rules
 function getCategoryInstructions(category) {
   if (category === 'fashion') {
@@ -300,21 +344,7 @@ export async function POST(req) {
 
         if (response.ok) {
           const resText = await response.text();
-          try {
-            const data = JSON.parse(resText);
-            if (Array.isArray(data) && data.length > 0) {
-              const item = data[0];
-              const inner = item.json || item;
-              replyText = inner.reply || inner.text || inner.output || inner.message || (typeof inner === 'string' ? inner : '');
-            } else if (data && typeof data === 'object') {
-              const inner = data.json || data;
-              replyText = inner.reply || inner.text || inner.output || inner.message || (typeof inner === 'string' ? inner : '');
-            } else if (typeof data === 'string') {
-              replyText = data;
-            }
-          } catch {
-            replyText = resText;
-          }
+          replyText = extractReplyText(resText);
         }
       } catch (err) {
         console.warn('n8n Webhook connection failed or timed out, executing Native Gemini AI Engine:', err.message);
