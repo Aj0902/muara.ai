@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, createContext, useContext, useTransition } from 'react';
+import { useState, useEffect, useRef, createContext, useContext, useTransition } from 'react';
 import { useStorefrontTheme } from './StorefrontThemeWrapper';
 import { createSpecialOrder, createOrder, getOccupiedTables, updateOrderProof } from '@/app/actions/store';
 
@@ -403,6 +403,17 @@ export default function StorefrontCartProvider({ children, store }) {
           : `Halo kak! 🍽️ Saya Asisten CS AI dari ${store.name}. Ada yang bisa saya bantu hari ini? Kakak bisa tanya soal menu lezat, jam buka, lokasi toko, atau lacak status pesanan.`
     }
   ]);
+
+  const cartEndRef = useRef(null);
+  const csEndRef = useRef(null);
+
+  useEffect(() => {
+    cartEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [cartMessages]);
+
+  useEffect(() => {
+    csEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [csMessages]);
 
   const [chatSessionId, setChatSessionId] = useState('');
 
@@ -1321,6 +1332,7 @@ export default function StorefrontCartProvider({ children, store }) {
                 )}
               </div>
             ))}
+            <div ref={cartEndRef} />
           </div>
 
           {/* Cart Item Cards list (Rendered only if cart has items) */}
@@ -1832,7 +1844,7 @@ export default function StorefrontCartProvider({ children, store }) {
 
       {/* C. FLOATING CHAT WIDGET PANEL (CS AI) */}
       <div
-        className={`fixed bottom-24 right-6 sm:bottom-28 sm:right-8 z-50 w-[calc(100vw-3rem)] sm:w-96 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right transform ${
+        className={`fixed bottom-20 right-4 sm:bottom-24 sm:right-8 z-50 w-[calc(100vw-2rem)] sm:w-96 max-h-[82vh] sm:max-h-[580px] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right transform ${
           chatOpen && !cartOpen ? 'scale-100 opacity-100 pointer-events-auto' : 'scale-50 opacity-0 pointer-events-none translate-y-10'
         }`}
       >
@@ -1863,7 +1875,7 @@ export default function StorefrontCartProvider({ children, store }) {
         </div>
 
         {/* Chat Body messages */}
-        <div className="flex-1 h-80 p-4 overflow-y-auto bg-slate-50 dark:bg-slate-950/50 flex flex-col gap-4 hide-scrollbar">
+        <div className="flex-1 max-h-[52vh] sm:max-h-[380px] min-h-[220px] p-4 overflow-y-auto bg-slate-50 dark:bg-slate-950/50 flex flex-col gap-4 scroll-smooth">
           {csMessages.map((msg) => (
             <div
               key={msg.id}
@@ -1970,6 +1982,7 @@ export default function StorefrontCartProvider({ children, store }) {
               </div>
             </div>
           ))}
+          <div ref={csEndRef} />
         </div>
 
         {/* Quick Prompts list & Tracking form */}
