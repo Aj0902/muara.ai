@@ -826,11 +826,11 @@ export async function updateOrderProof(orderId, proofUrl) {
     // 3. Trigger WhatsApp notifications to BOTH store owner and customer
     const { data: store } = await supabase
       .from('stores')
-      .select('whatsapp, phone')
+      .select('whatsapp')
       .eq('id', order.store_id)
       .maybeSingle();
 
-    const storeWa = store?.whatsapp || store?.phone;
+    const storeWa = store?.whatsapp;
     const baseUrl = 'https://muara-ai.vercel.app';
     const orderToken = order.order_token || order.id;
 

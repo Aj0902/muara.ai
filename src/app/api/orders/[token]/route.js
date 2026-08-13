@@ -96,14 +96,14 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 });
   }
 
-  // Fetch store info (whatsapp, phone, name) separately
+  // Fetch store info (whatsapp, name) separately
   const { data: store } = await supabase
     .from('stores')
-    .select('whatsapp, phone, name')
+    .select('whatsapp, name')
     .eq('id', order.store_id)
     .maybeSingle();
 
-  order.store_whatsapp = store?.whatsapp || store?.phone || '';
+  order.store_whatsapp = store?.whatsapp || '';
   order.store_name = store?.name || '';
 
   // Fallback extraction of proof URL from notes if column is missing/null
@@ -199,11 +199,11 @@ export async function POST(request, { params }) {
   // 3. Trigger WhatsApp notifications to BOTH store owner and customer
   const { data: store } = await supabase
     .from('stores')
-    .select('whatsapp, phone')
+    .select('whatsapp')
     .eq('id', order.store_id)
     .maybeSingle();
 
-  const storeWa = store?.whatsapp || store?.phone;
+  const storeWa = store?.whatsapp;
   const baseUrl = 'https://muara-ai.vercel.app';
   const orderToken = order.order_token || order.id;
 
