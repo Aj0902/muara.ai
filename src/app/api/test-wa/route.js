@@ -4,10 +4,11 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const phone = searchParams.get('phone');
   const customKey = searchParams.get('key');
+  const customSession = searchParams.get('session');
 
   const rawUrl = process.env.WAHA_API_URL;
   const rawApiKey = customKey || process.env.WAHA_API_KEY;
-  const session = process.env.WAHA_SESSION?.trim() || 'default';
+  const session = customSession?.trim() || process.env.WAHA_SESSION?.trim() || 'muara';
 
   if (!rawUrl) {
     return NextResponse.json({
@@ -23,7 +24,7 @@ export async function GET(request) {
 
   if (!phone) {
     return NextResponse.json({
-      message: 'WAHA diagnostic endpoint ready. Add ?phone=08xxxxxxxxxx to test. You can also pass &key=YOUR_KEY if testing different keys.',
+      message: 'WAHA diagnostic endpoint ready. Add ?phone=08xxxxxxxxxx to test. You can also pass &key=YOUR_KEY or &session=muara if testing.',
       config: {
         url: rawUrl.trim().replace(/\/+$/, ''),
         session,
@@ -40,7 +41,6 @@ export async function GET(request) {
   if (!cleanPhone.startsWith('62')) cleanPhone = '62' + cleanPhone;
   const chatId = `${cleanPhone}@c.us`;
 
-  // We will try standard X-Api-Key header, and also x-api-key query param as fallback if 401
   const targetEndpoint = `${url}/api/sendText`;
 
   const payload = {
@@ -64,7 +64,7 @@ export async function GET(request) {
     let data;
     try { data = JSON.parse(resText); } catch { data = resText; }
 
-    // If 401, try Attempt 2: x-api-key query parameter
+    // Attempt 2: x-api-key query parameter fallback if 401
     let attemptUsed = 'X-Api-Key header';
     if (res.status === 401) {
       const urlWithKey = `${targetEndpoint}?x-api-key=${encodeURIComponent(apiKey)}`;
@@ -90,6 +90,7 @@ export async function GET(request) {
       targetEndpoint,
       chatId,
       session,
+      payloadSent: payload,
       apiKeyUsedPreview: apiKey.substring(0, 4) + '***' + apiKey.substring(Math.max(0, apiKey.length - 2)),
       wahaResponse: data
     });

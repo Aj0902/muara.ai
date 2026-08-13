@@ -10,7 +10,7 @@ import { revalidatePath } from 'next/cache';
 async function sendWhatsApp(to, message) {
   const rawUrl = process.env.WAHA_API_URL;
   const rawApiKey = process.env.WAHA_API_KEY;
-  const session = process.env.WAHA_SESSION?.trim() || 'default';
+  const session = process.env.WAHA_SESSION?.trim() || 'muara';
 
   if (!rawUrl || !rawApiKey || !to) {
     console.warn('WAHA: Missing API URL, Key, or Target Phone', { hasUrl: !!rawUrl, hasKey: !!rawApiKey, to });

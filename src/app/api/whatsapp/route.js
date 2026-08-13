@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request) {
   try {
-    const { to, message } = await request.json();
+    const { to, message, session: reqSession } = await request.json();
     const rawUrl = process.env.WAHA_API_URL;
     const rawApiKey = process.env.WAHA_API_KEY;
-    const session = process.env.WAHA_SESSION?.trim() || 'default';
+    const session = reqSession?.trim() || process.env.WAHA_SESSION?.trim() || 'muara';
 
     if (!rawUrl || !rawApiKey) {
       return NextResponse.json({
