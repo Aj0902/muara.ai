@@ -823,7 +823,7 @@ export async function updateOrderProof(orderId, proofUrl) {
         .eq('id', order.id);
     }
 
-    // 3. Trigger WhatsApp notifications to BOTH store owner and customer
+    // 3. Trigger WhatsApp notification to store owner ONLY
     const { data: store } = await supabase
       .from('stores')
       .select('whatsapp')
@@ -842,17 +842,6 @@ export async function updateOrderProof(orderId, proofUrl) {
         `🔗 ${baseUrl}/pesanan/kelola/${orderToken}`;
 
       await sendWhatsApp(storeWa, storeMsg);
-    }
-
-    // Send WA confirmation to customer
-    if (order.customer_phone) {
-      const custMsg = `📎 *BUKTI TRANSFER TERKIRIM*\n\n` +
-        `Halo *${order.customer_name}*, bukti pembayaran Anda untuk pesanan *#${order.invoice_number}* (Total: Rp ${Number(order.total_amount).toLocaleString('id-ID')}) telah kami terima.\n\n` +
-        `Status saat ini: *Menunggu Verifikasi Penjual*\n\n` +
-        `Cek status: ${baseUrl}/pesanan/bayar/${orderToken}\n\n` +
-        `Terima kasih! 🙏`;
-
-      await sendWhatsApp(order.customer_phone, custMsg);
     }
 
     revalidatePath('/admin/pesanan');

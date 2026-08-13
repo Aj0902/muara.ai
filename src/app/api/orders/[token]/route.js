@@ -196,7 +196,7 @@ export async function POST(request, { params }) {
     if (fallbackRes.error) return NextResponse.json({ error: fallbackRes.error.message }, { status: 400 });
   }
 
-  // 3. Trigger WhatsApp notifications to BOTH store owner and customer
+  // 3. Trigger WhatsApp notification to store owner ONLY
   const { data: store } = await supabase
     .from('stores')
     .select('whatsapp')
@@ -215,17 +215,6 @@ export async function POST(request, { params }) {
       `🔗 ${baseUrl}/pesanan/kelola/${orderToken}`;
 
     await sendWhatsAppMessage(storeWa, storeMsg);
-  }
-
-  // Send WA confirmation to customer
-  if (order.customer_phone) {
-    const custMsg = `📎 *BUKTI TRANSFER TERKIRIM*\n\n` +
-      `Halo *${order.customer_name}*, bukti pembayaran Anda untuk pesanan *#${order.invoice_number}* (Total: Rp ${Number(order.total_amount).toLocaleString('id-ID')}) telah kami terima.\n\n` +
-      `Status saat ini: *Menunggu Verifikasi Penjual*\n\n` +
-      `Cek status: ${baseUrl}/pesanan/bayar/${orderToken}\n\n` +
-      `Terima kasih! 🙏`;
-
-    await sendWhatsAppMessage(order.customer_phone, custMsg);
   }
 
   return NextResponse.json({ success: true, orderToken: order.order_token });

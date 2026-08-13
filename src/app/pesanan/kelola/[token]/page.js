@@ -104,21 +104,15 @@ export default function UMKMOrderPage() {
         body: JSON.stringify({ status: 'paid' })
       });
 
-      // Notify customer via WA
       const baseUrl = 'https://muara-ai.vercel.app';
-      const textMessage = `✅ *PEMBAYARAN DIVERIFIKASI & LUNAS!*\n\n` +
-        `Pembayaran Anda untuk pesanan #${order.invoice_number} telah dikonfirmasi & diverifikasi oleh penjual. Pesanan Anda sedang diproses!\n\n` +
-        `🔗 *Cek Status:* ${baseUrl}/pesanan/bayar/${token}\n\n` +
-        `Terima kasih! 🎉`;
+      const cleanPhone = normalizePhone(order.customer_phone);
+      const textMessage = `Halo ${order.customer_name}, pembayaran Anda untuk pesanan #${order.invoice_number} (Total: Rp ${Number(order.total_amount).toLocaleString('id-ID')}) telah kami VERIFIKASI & DIKONFIRMASI LUNAS! 🎉\n\n` +
+        `Pesanan Anda sedang diproses oleh toko kami.\n` +
+        `🔗 *Cek Status Pesanan:* ${baseUrl}/pesanan/bayar/${token}\n\n` +
+        `Terima kasih telah berbelanja! 🙏`;
 
-      await fetch('/api/whatsapp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: order.customer_phone,
-          message: textMessage
-        })
-      });
+      // Redirect directly to WhatsApp chat so UMKM owner sends message directly to customer
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(textMessage)}`, '_blank');
 
       await fetchOrder();
     } catch (e) {
@@ -129,7 +123,7 @@ export default function UMKMOrderPage() {
   };
 
   const handleReject = async () => {
-    if (!confirm('Tolak pembayaran ini? Pelanggan akan diberitahu via WhatsApp.')) return;
+    if (!confirm('Tolak pembayaran ini? Sesi WhatsApp ke pelanggan akan dibuka.')) return;
     setActionLoading('reject');
     try {
       await fetch(`/api/orders/${token}`, {
@@ -138,18 +132,12 @@ export default function UMKMOrderPage() {
         body: JSON.stringify({ status: 'cancelled' })
       });
 
-      // Notify customer via WA
-      const textMessage = `❌ *PEMBAYARAN DITOLAK*\n\n` +
-        `Pembayaran untuk pesanan #${order.invoice_number} ditolak oleh penjual. Silakan hubungi penjual untuk informasi lebih lanjut.`;
+      const cleanPhone = normalizePhone(order.customer_phone);
+      const textMessage = `Halo ${order.customer_name}, mohon maaf bukti pembayaran Anda untuk pesanan #${order.invoice_number} DITOLAK oleh toko kami.\n\n` +
+        `Silakan hubungi kami untuk periksa kembali bukti pembayaran Anda. Terima kasih.`;
 
-      await fetch('/api/whatsapp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: order.customer_phone,
-          message: textMessage
-        })
-      });
+      // Redirect directly to WhatsApp chat so UMKM owner sends message directly to customer
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(textMessage)}`, '_blank');
 
       await fetchOrder();
     } catch (e) {
