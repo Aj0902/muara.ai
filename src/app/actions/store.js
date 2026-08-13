@@ -6,6 +6,30 @@ import { cookies } from 'next/headers';
 import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 
+function normalizePhone(rawPhone) {
+  if (!rawPhone) return '';
+  let phone = String(rawPhone).replace(/[^0-9]/g, '');
+  if (phone.startsWith('6208')) {
+    phone = '62' + phone.slice(4);
+  } else if (phone.startsWith('08')) {
+    phone = '62' + phone.slice(1);
+  } else if (phone.startsWith('0')) {
+    phone = '62' + phone.slice(1);
+  } else if (!phone.startsWith('62')) {
+    phone = '62' + phone;
+  }
+  return phone;
+}
+
+function getBaseUrl() {
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/+$/, '');
+  if (process.env.VERCEL_URL) {
+    const url = process.env.VERCEL_URL;
+    return url.startsWith('http') ? url : `https://${url}`;
+  }
+  return 'http://localhost:3000';
+}
+
 // Helper to send WA message via WAHA API
 async function sendWhatsApp(to, message) {
   const rawUrl = process.env.WAHA_API_URL;
@@ -19,12 +43,8 @@ async function sendWhatsApp(to, message) {
 
   const url = rawUrl.trim().replace(/\/+$/, '');
   const apiKey = rawApiKey.trim();
-
-  // Normalize phone: strip +, ensure 62 prefix, append @c.us
-  let phone = to.replace(/[^0-9]/g, '');
-  if (phone.startsWith('08')) phone = '62' + phone.slice(1);
-  if (!phone.startsWith('62')) phone = '62' + phone;
-  const chatId = `${phone}@c.us`;
+  const cleanPhone = normalizePhone(to);
+  const chatId = `${cleanPhone}@c.us`;
 
   try {
     const res = await fetch(`${url}/api/sendText`, {
@@ -39,7 +59,7 @@ async function sendWhatsApp(to, message) {
     let data;
     try { data = JSON.parse(resText); } catch { data = resText; }
     if (!res.ok) throw new Error(typeof data === 'object' ? (data.message || data.error || JSON.stringify(data)) : data);
-    console.log('WhatsApp sent successfully:', data);
+    console.log('WhatsApp sent successfully to', chatId, ':', data);
   } catch (e) {
     console.error('Failed to send WhatsApp:', e.message || e);
   }
@@ -545,8 +565,10 @@ export async function createOrder(storeId, customerName, customerPhone, serviceT
       .eq('id', storeId)
       .single();
     if (!storeError && storeData?.whatsapp) {
-      const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+      const baseUrl = getBaseUrl();
       await sendWhatsApp(storeData.whatsapp, `Pesanan baru ${invoiceNumber}. Detail: ${baseUrl}/pesanan/kelola/${orderToken}`);
+    } else {
+      console.warn('WAHA: Store WhatsApp number missing or store query error:', storeError, storeData);
     }
     const orderItems = items.map((item) => ({
       order_id: order.id,

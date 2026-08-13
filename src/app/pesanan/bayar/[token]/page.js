@@ -70,16 +70,24 @@ export default function CustomerPaymentPage({ params }) {
         body: JSON.stringify({ paymentProofUrl: proofUrl })
       });
 
-      // Notify UMKM owner via WhatsApp
-      const baseUrl = window.location.origin;
-      await fetch('/api/whatsapp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: order.store_whatsapp || '',
-          message: `📎 Bukti transfer diterima untuk pesanan ${order.invoice_number} dari ${order.customer_name}.\n\nSilakan konfirmasi pembayaran di:\n${baseUrl}/pesanan/kelola/${token}`
-        })
-      });
+      // Notify UMKM owner via WhatsApp if store whatsapp is available
+      if (order.store_whatsapp) {
+        const baseUrl = window.location.origin;
+        const waRes = await fetch('/api/whatsapp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: order.store_whatsapp,
+            message: `📎 Bukti transfer diterima untuk pesanan ${order.invoice_number} dari ${order.customer_name}.\n\nSilakan konfirmasi pembayaran di:\n${baseUrl}/pesanan/kelola/${token}`
+          })
+        });
+        const waData = await waRes.json();
+        if (!waRes.ok) {
+          console.warn('WAHA Notification warning:', waData);
+        }
+      } else {
+        console.warn('Store WhatsApp number is missing in database for this store.');
+      }
 
       setUploadPreview(null);
       await fetchOrder();
