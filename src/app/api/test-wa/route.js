@@ -74,10 +74,15 @@ export async function GET(request) {
     let data;
     try { data = JSON.parse(resText); } catch { data = resText; }
 
+    const keyStr = rawApiKey ? rawApiKey.trim() : '';
+    const keyPreview = keyStr ? (keyStr.substring(0, 3) + '***' + keyStr.substring(Math.max(0, keyStr.length - 3))) : 'MISSING';
+
     return NextResponse.json({
       success: res.ok,
       httpStatus: res.status,
       targetUrl: targetUrl.toString(),
+      keyLength: keyStr.length,
+      keyPreview,
       payloadSent: payload,
       wahaResponse: data
     });
