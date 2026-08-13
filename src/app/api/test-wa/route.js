@@ -51,12 +51,9 @@ export async function GET(request) {
   const chatId = `${cleanPhone}@c.us`;
 
   const payload = {
-    event: 'test_notification',
-    to: cleanPhone,
-    phone: cleanPhone,
-    chatId,
     session,
-    text: '🧪 Tes Notifikasi n8n Webhook / WhatsApp dari CMS UMKM!'
+    chatId,
+    text: '🧪 Tes Notifikasi WhatsApp dari CMS UMKM!'
   };
 
   const headers = { 'Content-Type': 'application/json' };

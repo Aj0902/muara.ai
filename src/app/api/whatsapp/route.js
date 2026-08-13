@@ -17,12 +17,11 @@ function normalizePhone(rawPhone) {
 
 export async function POST(request) {
   try {
-    const body = await request.json();
-    const { to, message } = body;
+    const { to, message, session: reqSession } = await request.json();
 
     const targetUrl = process.env.N8N_WEBHOOK_URL || process.env.WAHA_API_URL;
     const apiKey = process.env.WAHA_API_KEY?.trim();
-    const session = body.session?.trim() || process.env.WAHA_SESSION?.trim() || 'muara';
+    const session = reqSession?.trim() || process.env.WAHA_SESSION?.trim() || 'muara';
 
     if (!targetUrl) {
       return NextResponse.json({
@@ -42,15 +41,11 @@ export async function POST(request) {
     const cleanPhone = normalizePhone(to);
     const chatId = `${cleanPhone}@c.us`;
 
+    // Strict 3-field WAHA JSON payload format:
     const payload = {
-      event: body.event || 'notification',
-      to: cleanPhone,
-      phone: cleanPhone,
-      chatId,
       session,
-      text: message,
-      message,
-      ...body
+      chatId,
+      text: message
     };
 
     const headers = { 'Content-Type': 'application/json' };
@@ -77,7 +72,7 @@ export async function POST(request) {
 
     return NextResponse.json({ success: true, data });
   } catch (e) {
-    console.error('Webhook / WAHA Route error:', e);
+    console.error('WA API Route error:', e);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }

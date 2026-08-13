@@ -30,15 +30,15 @@ function getBaseUrl() {
   return 'http://localhost:3000';
 }
 
-// Helper to send notification to n8n webhook or WAHA API
-async function sendWhatsApp(to, message, extraData = {}) {
+// Helper to send WA message via WAHA API or n8n HTTP Webhook
+async function sendWhatsApp(to, message) {
   const targetUrl = process.env.N8N_WEBHOOK_URL || process.env.WAHA_API_URL;
   const apiKey = process.env.WAHA_API_KEY?.trim();
   const session = process.env.WAHA_SESSION?.trim() || 'muara';
 
-  if (!targetUrl || !to) {
-    console.warn('Notification skipped: Missing N8N_WEBHOOK_URL / WAHA_API_URL or phone number', { hasUrl: !!targetUrl, to });
-    return { success: false, error: 'Missing webhook URL or phone' };
+  if (!targetUrl || !to || !message) {
+    console.warn('Notification skipped: Missing URL, target phone, or message text', { hasUrl: !!targetUrl, to });
+    return { success: false, error: 'Missing configuration or parameters' };
   }
 
   let url = targetUrl.trim();
@@ -49,15 +49,11 @@ async function sendWhatsApp(to, message, extraData = {}) {
   const cleanPhone = normalizePhone(to);
   const chatId = `${cleanPhone}@c.us`;
 
+  // Strict 3-field JSON payload expected by WAHA:
   const payload = {
-    event: extraData.event || 'notification',
-    to: cleanPhone,
-    phone: cleanPhone,
-    chatId,
     session,
-    text: message,
-    message,
-    ...extraData
+    chatId,
+    text: message
   };
 
   const headers = { 'Content-Type': 'application/json' };
@@ -74,10 +70,10 @@ async function sendWhatsApp(to, message, extraData = {}) {
     const resText = await res.text();
     let data;
     try { data = JSON.parse(resText); } catch { data = resText; }
-    console.log('Webhook / WA notification sent to', cleanPhone, ':', data);
+    console.log('WhatsApp notification sent to', chatId, ':', data);
     return { success: true, data };
   } catch (e) {
-    console.error('Failed to send webhook / WA notification:', e.message || e);
+    console.error('Failed to send WhatsApp notification:', e.message || e);
     return { success: false, error: e.message || e };
   }
 }
@@ -583,19 +579,14 @@ export async function createOrder(storeId, customerName, customerPhone, serviceT
       .single();
     if (!storeError && storeData?.whatsapp) {
       const baseUrl = getBaseUrl();
-      await sendWhatsApp(
-        storeData.whatsapp,
-        `Pesanan baru ${invoiceNumber}. Detail: ${baseUrl}/pesanan/kelola/${orderToken}`,
-        {
-          event: 'order_created',
-          invoiceNumber,
-          orderToken,
-          totalAmount,
-          customerName,
-          customerPhone: customerPhone,
-          manageUrl: `${baseUrl}/pesanan/kelola/${orderToken}`
-        }
-      );
+      const textMessage = `🛒 *PESANAN BARU MASUK!*\n\n` +
+        `📋 *Invoice:* #${invoiceNumber}\n` +
+        `👤 *Pelanggan:* ${customerName}\n` +
+        `📞 *No. WA:* ${customerPhone}\n` +
+        `💰 *Total:* Rp ${Number(totalAmount).toLocaleString('id-ID')}\n\n` +
+        `🔗 *Kelola Pesanan:* ${baseUrl}/pesanan/kelola/${orderToken}`;
+
+      await sendWhatsApp(storeData.whatsapp, textMessage);
     } else {
       console.warn('Webhook / WAHA: Store WhatsApp number missing or store query error:', storeError, storeData);
     }
