@@ -18,17 +18,25 @@ function normalizePhone(rawPhone) {
   return phone;
 }
 
-// Native Smart Engine Fallback using Gemini REST API & Intelligent Context-Aware Engine
-async function generateNativeGeminiResponse({ message, store, products, history }) {
-  const apiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY)?.trim();
+// Generate Category Specific Vocabulary & Rules
+function getCategoryInstructions(category) {
+  if (category === 'fashion') {
+    return '1. Kategori = FASHION (toko menjual BUSANA/PAKAIAN/BATIK).\n' +
+      '2. DILARANG memakai kata: "menu", "makanan", "minuman", "dapur", "lezat", "rasa", atau "meja".\n' +
+      '3. GUNAKAN istilah: "katalog busana", "pakaian/batik", "panduan ukuran (size chart)", "packing", "pengiriman kurir/ekspedisi".';
+  } else if (category === 'kriya') {
+    return '1. Kategori = KRIYA (toko menjual KERAJINAN TANGAN/FURNITURE ROTAN).\n' +
+      '2. DILARANG memakai kata: "menu", "makanan", "minuman", "dapur", "lezat", "rasa", atau "meja makan/resto".\n' +
+      '3. GUNAKAN istilah: "katalog kerajinan rotan", "perabotan", "spesifikasi custom / Pre-Order (PO)", "workshop", "quality control/finishing".';
+  } else {
+    return '1. Kategori = KULINER (toko menjual KULINER/RESTO/CAFE).\n' +
+      '2. GUNAKAN istilah: "menu makanan & minuman", "sajian lezat", "racikan dapur", "layanan Makan di Tempat (Meja 1-20)" atau "Take Away".';
+  }
+}
 
-  // Category specific instructions & vocabulary
-  const categoryInstructions =
-    store.category === 'fashion'
-      ? 'Toko ini adalah RITEL FASHION / BATIK. Gunakan istilah "katalog busana", "pakaian/batik", "size chart", "packing", "pengiriman kurir/ekspedisi". JANGAN PERNAH menyebutkan "menu makanan", "meja", "dapur", atau "resep".'
-      : store.category === 'kriya'
-      ? 'Toko ini adalah KERAJINAN KRIYA / FURNITURE ROTAN. Gunakan istilah "katalog kerajinan rotan", "perabotan", "custom order/PO", "workshop", "finishing". JANGAN PERNAH menyebutkan "menu makanan", "meja makan", "dapur", atau "resep".'
-      : 'Toko ini adalah KULINER / RESTO / CAFE. Gunakan istilah "menu makanan", "sajian lezat", "dapur", "meja dine-in", "takeaway".';
+// Build Perfected System Prompt
+function buildPerfectedSystemPrompt({ type, message, store, products, history, cartItems }) {
+  const categoryInstructions = getCategoryInstructions(store.category);
 
   const productListText = (products || []).length > 0
     ? products.map(p => `- ${p.name}: Rp ${Number(p.price).toLocaleString('id-ID')} ${p.description ? `(${p.description})` : ''}`).join('\n')
@@ -36,31 +44,80 @@ async function generateNativeGeminiResponse({ message, store, products, history 
 
   const historyText = (history || []).slice(-6).map(h => `${h.sender === 'user' ? 'Pelanggan' : 'CS AI'}: ${h.text}`).join('\n');
 
-  const systemPrompt = `Anda adalah ${store.chatbot_name || 'Asisten AI CS Resmi'} untuk toko "${store.name}".
-Persona & Gaya Komunikasi: ${store.chatbot_persona || 'Ramah, sopan, profesional, membantu, dan cerdas.'}
+  return `Anda adalah ${store.chatbot_name || 'Asisten AI'}, asisten AI resmi yang ramah, santun, profesional, tegas, dan solutif untuk toko "${store.name}".
 
-Aturan Khusus Kategori Toko:
+---
+### 🚨 BATASAN WEWENANG & ALUR CHECKOUT (ATURAN KETAT DILARANG DILANGGAR):
+1. DILARANG meminta pembeli mengetikkan Nama, Nomor WhatsApp, atau Alamat di dalam kolom chat untuk alasan "hold pesanan", "rekam data", atau "memproses transaksi secara manual".
+2. Selalu arahkan pembeli untuk mengisi Formulir Pemesanan resmi yang sudah tersedia di bagian bawah drawer **Keranjang Belanja Web** (lalu klik tombol "Lanjutkan Pesanan" untuk menerbitkan QRIS/Invoice), ATAU mengklik tombol **"⚡ Beli Direct"** pada kartu produk.
+3. Tugas Anda di Keranjang Belanja adalah: menyapa hangat, membantu rincikan barang belanjaannya, dan melakukan **Cross-Selling Cerdas** (merekomendasikan 1-2 barang pelengkap dari katalog toko). JANGAN mengambil alih fungsi formulir checkout web di dalam obrolan chat!
+
+---
+### 🏪 KONTEKS UTAMA TOKO:
+- Nama Toko: ${store.name}
+- ID Toko: ${store.id}
+- Kategori Toko: ${store.category}
+- Tagline Toko: ${store.tagline || 'Selamat datang di toko kami'}
+- Deskripsi Singkat: ${store.description || ''}
+- Cerita Brand: ${store.story || ''}
+- Alamat Toko: ${store.address || 'Detail alamat dapat ditanyakan langsung'}
+- Jam Operasional: ${store.hours || '09.00 - 21.00 WIB'}
+- WhatsApp Resmi: ${store.whatsapp || ''}
+- Persona Khusus Bot: ${store.chatbot_persona || 'Asisten Customer Service yang hangat dan sigap'}
+
+---
+### 💳 CARA MENJAWAB ALUR CHECKOUT & PEMBAYARAN:
+Jika pembeli bertanya cara pesan/checkout/bayar, JAWAB DENGAN TEGAS & SINGKAT mengarahkan ke UI Web:
+
+1. JIKA KATEGORI = "fashion":
+   - Arahkan pembeli mengisi **Formulir Pemesanan di Keranjang Web** (masukkan Nama, No. WA, & Alamat Pengiriman Kurir/Ekspedisi 🚚), lalu bayar via QRIS/Invoice. Atau sarankan klik tombol **"⚡ Beli Direct"** untuk WA admin.
+
+2. JIKA KATEGORI = "kriya":
+   - Arahkan pembeli mengisi **Formulir Pemesanan di Keranjang Web** (masukkan Nama, No. WA, & Catatan Spesifikasi Custom Pre-Order 🛠️), lalu buat Invoice SPK Workshop. Atau sarankan klik tombol **"⚡ Beli Direct"** untuk konsultasi custom via WA.
+
+3. JIKA KATEGORI = "kuliner":
+   - Arahkan pembeli mengisi **Formulir Pemesanan di Keranjang Web** (masukkan Nama, No. WA, & pilih Meja 1-20 / Takeaway 🍽️), lalu bayar via QRIS instan.
+
+---
+### 🚫 INSTRUKSI PERILAKU KATEGORI (HINDARI SALAH ISTILAH):
 ${categoryInstructions}
 
-Informasi Toko:
-- Nama Toko: ${store.name}
-- Tagline: ${store.tagline || '-'}
-- Alamat / Lokasi: ${store.address || 'Menghubungi admin via WA'}
-- Jam Operasional: ${store.hours || 'Setiap Hari'}
-- No. WhatsApp: ${store.whatsapp || '-'}
-- Instagram: ${store.instagram ? `@${store.instagram}` : '-'}
+---
+### 💡 PANDUAN SPESIFIK TIPE CHAT:
+Tipe Chat Saat Ini: "${type || 'cs'}"
 
-Daftar Katalog Produk & Harga Terkini:
+1. Jika Tipe Chat = "cart" (Asisten Keranjang Belanja):
+   - Isi Keranjang Belanja Saat Ini: ${JSON.stringify(cartItems || [])}
+   - TUGAS UTAMA: Sapa pembeli dengan hangat, bantu rincikan barang belanjaannya, dan lakukan **Cross-Selling Cerdas** (merekomendasikan 1-2 produk pelengkap yang cocok dari katalog toko).
+
+2. Jika Tipe Chat = "cs" (Customer Service & Tracking):
+   - TUGAS UTAMA: Jawab pertanyaan umum seputar lokasi toko, jam operasional, metode pembayaran, metode checkout, atau lacak status pesanan via nomor invoice.
+
+---
+### 📦 DAFTAR KATALOG PRODUK & HARGA RESMI TOKO:
 ${productListText}
 
-Riwayat Obrolan Terakhir:
+---
+### 📜 RIWAYAT OBROLAN TERAKHIR:
 ${historyText}
 
-Pesan Pelanggan Terbaru: "${message}"
+---
+### 💬 PESAN PELANGGAN TERBARU:
+"${message}"
 
-Tugas Anda:
-Berdasarkan informasi toko dan katalog produk di atas, jawablah pesan pelanggan dengan sangat ramah, ringkas, informatif, dan membantu.
-Gunakan emoticon yang sesuai. Jika pelanggan menanyakan produk, sebutkan nama produk dan harganya secara jelas. Jika menanyakan cara beli/checkout, jelaskan dengan lembut untuk menambah item ke keranjang dan menekan tombol checkout. JANGAN mengarang informasi di luar daftar produk di atas.`;
+---
+### 💬 GAYA BAHASA & FORMAT JAWABAN (WAJIB PERHATIKAN):
+1. SELALU jawab dalam Bahasa Indonesia yang ramah, alami, santun, komunikatif, dan solutif.
+2. Gunakan sapaan yang menghormati seperti "Kak" atau "Kakak".
+3. Gunakan emotikon seperlunya untuk memperhangat suasana (contoh: 👗 Fashion, 🛠️ Kriya, 🍔 Kuliner, 📦 Tracking Invoice).
+4. Jawaban singkat, padat, rapi, dan langsung mengarahkan ke Formulir UI Web yang relevan.`;
+}
+
+// Native Smart Engine Fallback using Gemini REST API & Intelligent Context-Aware Engine
+async function generateNativeGeminiResponse({ type, message, store, products, history, cartItems }) {
+  const apiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY)?.trim();
+
+  const systemPrompt = buildPerfectedSystemPrompt({ type, message, store, products, history, cartItems });
 
   // 1. Attempt Google Gemini REST API if API Key is available
   if (apiKey) {
@@ -123,7 +180,12 @@ Gunakan emoticon yang sesuai. Jika pelanggan menanyakan produk, sebutkan nama pr
 
   // Payment / Checkout Intent
   if (lowerMsg.includes('bayar') || lowerMsg.includes('pesan') || lowerMsg.includes('order') || lowerMsg.includes('checkout') || lowerMsg.includes('transfer')) {
-    return `🛒 *Cara Pemesanan & Pembayaran*:\n\n1. Pilih produk yang disukai di katalog dan klik **+ Tambah**.\n2. Buka keranjang belanja di bawah.\n3. Isi nama, no. WA, dan metode layanan.\n4. Klik **Checkout** untuk mendapatkan rincian tagihan & QRIS / Rekening pembayaran!\n\nPraktis dan cepat kak! 😊`;
+    if (store.category === 'fashion') {
+      return `🛒 *Cara Pemesanan & Pembayaran (Fashion)*:\n\n1. Pilih pakaian/busana favorit di katalog dan klik **+ Tambah**.\n2. Buka Keranjang Belanja di bawah dan isi Formulir Pemesanan (Nama, No. WA, Alamat Kurir/Ekspedisi 🚚).\n3. Klik **Lanjutkan Pesanan** untuk menerbitkan QRIS/Invoice instan! Atau klik tombol **⚡ Beli Direct** untuk order via WA admin. 😊`;
+    } else if (store.category === 'kriya') {
+      return `🛠️ *Cara Pemesanan & Custom Order (Kriya)*:\n\n1. Pilih perabotan/kerajinan di katalog dan klik **+ Tambah**.\n2. Buka Keranjang Belanja di bawah dan isi Formulir Pemesanan (Nama, No. WA, Catatan Spesifikasi Custom PO 🛠️).\n3. Klik **Lanjutkan Pesanan** untuk membuat Invoice SPK Workshop! Atau klik tombol **⚡ Beli Direct** untuk konsultasi custom via WA. 😊`;
+    }
+    return `🍽️ *Cara Pemesanan & Pembayaran (Kuliner)*:\n\n1. Pilih menu makanan/minuman lezat di katalog dan klik **+ Tambah**.\n2. Buka Keranjang Belanja di bawah dan isi Formulir Pemesanan (Nama, No. WA, Pilih Meja 1-20 / Takeaway 🍽️).\n3. Klik **Lanjutkan Pesanan** untuk menerbitkan QRIS pembayaran instan! 😊`;
   }
 
   // Generic Intelligent Fallback
@@ -183,12 +245,8 @@ export async function POST(req) {
     // 5. Attempt n8n Webhook call first if URL is configured
     if (n8nWebhookUrl) {
       try {
-        const categoryInstructions =
-          store.category === 'fashion'
-            ? 'Toko ini adalah RITEL FASHION / BATIK. Gunakan istilah "katalog busana", "pakaian/batik", "size chart", "packing", "pengiriman kurir/ekspedisi". JANGAN PERNAH menyebutkan "menu makanan", "meja", "dapur", atau "resep".'
-            : store.category === 'kriya'
-            ? 'Toko ini adalah KERAJINAN KRIYA / FURNITURE ROTAN. Gunakan istilah "katalog kerajinan rotan", "perabotan", "custom order/PO", "workshop", "finishing". JANGAN PERNAH menyebutkan "menu makanan", "meja makan", "dapur", atau "resep".'
-            : 'Toko ini adalah KULINER / RESTO / CAFE. Gunakan istilah "menu makanan", "sajian lezat", "dapur", "meja dine-in", "takeaway".';
+        const categoryInstructions = getCategoryInstructions(store.category);
+        const systemPrompt = buildPerfectedSystemPrompt({ type, message, store, products, history, cartItems });
 
         const payload = {
           type,
@@ -198,6 +256,7 @@ export async function POST(req) {
           store_name: store.name,
           store_category: store.category,
           category_instructions: categoryInstructions,
+          system_prompt: systemPrompt,
           store_info: {
             tagline: store.tagline,
             description: store.description,
@@ -245,7 +304,7 @@ export async function POST(req) {
 
     // 6. Native Fallback Engine if n8n was not configured, failed, or returned empty reply
     if (!replyText) {
-      replyText = await generateNativeGeminiResponse({ message, store, products, history });
+      replyText = await generateNativeGeminiResponse({ type, message, store, products, history, cartItems });
     }
 
     // 7. Save AI reply to chat logs database
