@@ -4,6 +4,21 @@ import { useState, useEffect, createContext, useContext, useTransition } from 'r
 import { useStorefrontTheme } from './StorefrontThemeWrapper';
 import { createSpecialOrder, createOrder, getOccupiedTables, updateOrderProof } from '@/app/actions/store';
 
+function normalizePhone(rawPhone) {
+  if (!rawPhone) return '';
+  let phone = String(rawPhone).replace(/[^0-9]/g, '');
+  if (phone.startsWith('6208')) {
+    phone = '62' + phone.slice(4);
+  } else if (phone.startsWith('08')) {
+    phone = '62' + phone.slice(1);
+  } else if (phone.startsWith('0')) {
+    phone = '62' + phone.slice(1);
+  } else if (!phone.startsWith('62')) {
+    phone = '62' + phone;
+  }
+  return phone;
+}
+
 let uniqueIdCounter = 0;
 function generateUniqueId(prefix = 'id') {
   return `${prefix}-${Date.now()}-${uniqueIdCounter++}`;
