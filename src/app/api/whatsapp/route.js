@@ -22,8 +22,15 @@ export async function POST(request) {
 
     // Normalize phone: strip +, ensure 62 prefix, append @c.us
     let phone = to.replace(/[^0-9]/g, '');
-    if (phone.startsWith('08')) phone = '62' + phone.slice(1);
-    if (!phone.startsWith('62')) phone = '62' + phone;
+    if (phone.startsWith('6208')) {
+      phone = '62' + phone.slice(4);
+    } else if (phone.startsWith('08')) {
+      phone = '62' + phone.slice(2);
+    } else if (phone.startsWith('0')) {
+      phone = '62' + phone.slice(1);
+    } else if (!phone.startsWith('62')) {
+      phone = '62' + phone;
+    }
     const chatId = `${phone}@c.us`;
 
     const payload = {
@@ -59,6 +66,25 @@ export async function POST(request) {
       if (res2.ok) {
         res = res2;
         data = data2;
+      }
+    }
+
+    // Attempt 3: Authorization Bearer header fallback if still 401
+    if (res.status === 401) {
+      const res3 = await fetch(`${url}/api/sendText`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const resText3 = await res3.text();
+      let data3;
+      try { data3 = JSON.parse(resText3); } catch { data3 = resText3; }
+      if (res3.ok) {
+        res = res3;
+        data = data3;
       }
     }
 

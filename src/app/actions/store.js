@@ -38,30 +38,71 @@ async function sendWhatsApp(to, message) {
 
   if (!rawUrl || !rawApiKey || !to) {
     console.warn('WAHA: Missing API URL, Key, or Target Phone', { hasUrl: !!rawUrl, hasKey: !!rawApiKey, to });
-    return;
+    return { success: false, error: 'Missing WAHA config or recipient phone' };
   }
 
   const url = rawUrl.trim().replace(/\/+$/, '');
   const apiKey = rawApiKey.trim();
   const cleanPhone = normalizePhone(to);
   const chatId = `${cleanPhone}@c.us`;
+  const payload = { session, chatId, text: message };
 
   try {
-    const res = await fetch(`${url}/api/sendText`, {
+    // Attempt 1: Header X-Api-Key
+    let res = await fetch(`${url}/api/sendText`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Api-Key': apiKey
       },
-      body: JSON.stringify({ session, chatId, text: message })
+      body: JSON.stringify(payload)
     });
-    const resText = await res.text();
+
+    let resText = await res.text();
     let data;
     try { data = JSON.parse(resText); } catch { data = resText; }
+
+    // Attempt 2: x-api-key query parameter fallback if 401
+    if (res.status === 401) {
+      const res2 = await fetch(`${url}/api/sendText?x-api-key=${encodeURIComponent(apiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const resText2 = await res2.text();
+      let data2;
+      try { data2 = JSON.parse(resText2); } catch { data2 = resText2; }
+      if (res2.ok) {
+        res = res2;
+        data = data2;
+      }
+    }
+
+    // Attempt 3: Authorization Bearer header fallback if still 401
+    if (res.status === 401) {
+      const res3 = await fetch(`${url}/api/sendText`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const resText3 = await res3.text();
+      let data3;
+      try { data3 = JSON.parse(resText3); } catch { data3 = resText3; }
+      if (res3.ok) {
+        res = res3;
+        data = data3;
+      }
+    }
+
     if (!res.ok) throw new Error(typeof data === 'object' ? (data.message || data.error || JSON.stringify(data)) : data);
     console.log('WhatsApp sent successfully to', chatId, ':', data);
+    return { success: true, data };
   } catch (e) {
-    console.error('Failed to send WhatsApp:', e.message || e);
+    console.error('Failed to send WhatsApp to', chatId, ':', e.message || e);
+    return { success: false, error: e.message || e };
   }
 }
 
