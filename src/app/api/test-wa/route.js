@@ -21,19 +21,19 @@ export async function GET(request) {
   const customKey = searchParams.get('key');
   const customSession = searchParams.get('session');
 
-  const rawUrl = process.env.N8N_WEBHOOK_URL || process.env.WAHA_API_URL;
+  const rawUrl = process.env.WAHA_API_URL;
   const rawApiKey = customKey || process.env.WAHA_API_KEY;
   const session = customSession?.trim() || process.env.WAHA_SESSION?.trim() || 'muara';
 
   if (!rawUrl) {
     return NextResponse.json({
-      error: 'Environment variable N8N_WEBHOOK_URL (atau WAHA_API_URL) belum ada di Vercel'
+      error: 'Environment variable WAHA_API_URL belum ada di Vercel'
     }, { status: 400 });
   }
 
   if (!phone) {
     return NextResponse.json({
-      message: 'Diagnostik n8n Webhook / WAHA Siap. Tambahkan ?phone=08xxxxxxxxxx di URL untuk tes kirim JSON payload ke webhook Anda.',
+      message: 'Diagnostik WAHA API Siap. Tambahkan ?phone=08xxxxxxxxxx di URL untuk tes kirim 3-field JSON payload ke server WAHA Anda.',
       config: {
         targetUrl: rawUrl.trim(),
         session,
@@ -42,10 +42,8 @@ export async function GET(request) {
     });
   }
 
-  let url = rawUrl.trim();
-  if (!url.includes('/api/sendText') && !url.includes('webhook') && !url.includes('n8n')) {
-    url = url.replace(/\/+$/, '') + '/api/sendText';
-  }
+  const baseUrl = rawUrl.trim().replace(/\/+$/, '');
+  const url = baseUrl.endsWith('/api/sendText') ? baseUrl : `${baseUrl}/api/sendText`;
 
   const cleanPhone = normalizePhone(phone);
   const chatId = `${cleanPhone}@c.us`;
@@ -53,7 +51,7 @@ export async function GET(request) {
   const payload = {
     session,
     chatId,
-    text: '🧪 Tes Notifikasi WhatsApp dari CMS UMKM!'
+    text: '🧪 Tes Notifikasi WAHA API dari CMS UMKM!'
   };
 
   const headers = { 'Content-Type': 'application/json' };
@@ -77,7 +75,7 @@ export async function GET(request) {
       httpStatus: res.status,
       targetUrl: url,
       payloadSent: payload,
-      webhookResponse: data
+      wahaResponse: data
     });
   } catch (err) {
     return NextResponse.json({

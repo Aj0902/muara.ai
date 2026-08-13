@@ -30,26 +30,24 @@ function getBaseUrl() {
   return 'http://localhost:3000';
 }
 
-// Helper to send WA message via WAHA API or n8n HTTP Webhook
+// Helper to send WA message via WAHA API directly
 async function sendWhatsApp(to, message) {
-  const targetUrl = process.env.N8N_WEBHOOK_URL || process.env.WAHA_API_URL;
+  const rawUrl = process.env.WAHA_API_URL;
   const apiKey = process.env.WAHA_API_KEY?.trim();
   const session = process.env.WAHA_SESSION?.trim() || 'muara';
 
-  if (!targetUrl || !to || !message) {
-    console.warn('Notification skipped: Missing URL, target phone, or message text', { hasUrl: !!targetUrl, to });
-    return { success: false, error: 'Missing configuration or parameters' };
+  if (!rawUrl || !to || !message) {
+    console.warn('WAHA Notification skipped: Missing WAHA_API_URL, target phone, or message text', { hasUrl: !!rawUrl, to });
+    return { success: false, error: 'Missing WAHA_API_URL or parameters' };
   }
 
-  let url = targetUrl.trim();
-  if (!url.includes('/api/sendText') && !url.includes('webhook') && !url.includes('n8n')) {
-    url = url.replace(/\/+$/, '') + '/api/sendText';
-  }
+  const baseUrl = rawUrl.trim().replace(/\/+$/, '');
+  const url = baseUrl.endsWith('/api/sendText') ? baseUrl : `${baseUrl}/api/sendText`;
 
   const cleanPhone = normalizePhone(to);
   const chatId = `${cleanPhone}@c.us`;
 
-  // Strict 3-field JSON payload expected by WAHA:
+  // Strict 3-field JSON payload expected by WAHA API:
   const payload = {
     session,
     chatId,
@@ -70,10 +68,10 @@ async function sendWhatsApp(to, message) {
     const resText = await res.text();
     let data;
     try { data = JSON.parse(resText); } catch { data = resText; }
-    console.log('WhatsApp notification sent to', chatId, ':', data);
+    console.log('WAHA WhatsApp notification sent to', chatId, ':', data);
     return { success: true, data };
   } catch (e) {
-    console.error('Failed to send WhatsApp notification:', e.message || e);
+    console.error('Failed to send WAHA WhatsApp notification:', e.message || e);
     return { success: false, error: e.message || e };
   }
 }

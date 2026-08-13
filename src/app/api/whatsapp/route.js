@@ -19,13 +19,13 @@ export async function POST(request) {
   try {
     const { to, message, session: reqSession } = await request.json();
 
-    const targetUrl = process.env.N8N_WEBHOOK_URL || process.env.WAHA_API_URL;
+    const rawUrl = process.env.WAHA_API_URL;
     const apiKey = process.env.WAHA_API_KEY?.trim();
     const session = reqSession?.trim() || process.env.WAHA_SESSION?.trim() || 'muara';
 
-    if (!targetUrl) {
+    if (!rawUrl) {
       return NextResponse.json({
-        error: 'N8N_WEBHOOK_URL atau WAHA_API_URL belum dikonfigurasi di Environment Variables.'
+        error: 'WAHA_API_URL belum dikonfigurasi di Environment Variables.'
       }, { status: 500 });
     }
 
@@ -33,15 +33,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Nomor tujuan (to) dan pesan (message) wajib diisi.' }, { status: 400 });
     }
 
-    let url = targetUrl.trim();
-    if (!url.includes('/api/sendText') && !url.includes('webhook') && !url.includes('n8n')) {
-      url = url.replace(/\/+$/, '') + '/api/sendText';
-    }
+    const baseUrl = rawUrl.trim().replace(/\/+$/, '');
+    const url = baseUrl.endsWith('/api/sendText') ? baseUrl : `${baseUrl}/api/sendText`;
 
     const cleanPhone = normalizePhone(to);
     const chatId = `${cleanPhone}@c.us`;
 
-    // Strict 3-field WAHA JSON payload format:
+    // Strict 3-field JSON payload expected by WAHA API:
     const payload = {
       session,
       chatId,
@@ -72,7 +70,7 @@ export async function POST(request) {
 
     return NextResponse.json({ success: true, data });
   } catch (e) {
-    console.error('WA API Route error:', e);
+    console.error('WAHA API Route error:', e);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
