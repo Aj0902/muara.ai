@@ -785,16 +785,27 @@ export async function importProfileFromCSV(profileRow) {
 export async function updateOrderProof(orderId, proofUrl) {
   if (!orderId || !proofUrl) return { error: 'Order ID dan URL Bukti Bayar wajib!' };
   try {
-    const { data: order, error: fetchErr } = await supabase
+    // 1. Fetch order by id or order_token
+    let { data: order } = await supabase
       .from('orders')
-      .select('*, stores(whatsapp, phone)')
+      .select('*')
       .eq('id', orderId)
       .maybeSingle();
 
-    if (fetchErr || !order) throw fetchErr || new Error('Order tidak ditemukan');
+    if (!order) {
+      const resByToken = await supabase
+        .from('orders')
+        .select('*')
+        .eq('order_token', orderId)
+        .maybeSingle();
+      order = resByToken.data;
+    }
+
+    if (!order) throw new Error('Order tidak ditemukan');
 
     const updatedNotes = [order.notes, `Bukti Transfer: ${proofUrl}`].filter(Boolean).join(' | ');
 
+    // 2. Update order status to payment_uploaded and save payment_proof_url
     let { error: updateErr } = await supabase
       .from('orders')
       .update({
@@ -802,19 +813,24 @@ export async function updateOrderProof(orderId, proofUrl) {
         notes: updatedNotes,
         status: 'payment_uploaded'
       })
-      .eq('id', orderId);
+      .eq('id', order.id);
 
     if (updateErr) {
       console.warn('payment_proof_url update failed, using notes fallback:', updateErr.message);
-      const fallbackRes = await supabase
+      await supabase
         .from('orders')
         .update({ notes: updatedNotes, status: 'payment_uploaded' })
-        .eq('id', orderId);
-      if (fallbackRes.error) throw fallbackRes.error;
+        .eq('id', order.id);
     }
 
-    // Trigger WhatsApp notification to UMKM Store Owner to verify payment
-    const storeWa = order.stores?.whatsapp || order.stores?.phone;
+    // 3. Fetch store info (whatsapp / phone) separately
+    const { data: store } = await supabase
+      .from('stores')
+      .select('whatsapp, phone')
+      .eq('id', order.store_id)
+      .maybeSingle();
+
+    const storeWa = store?.whatsapp || store?.phone;
     if (storeWa) {
       const baseUrl = 'https://muara-ai.vercel.app';
       const orderToken = order.order_token || order.id;

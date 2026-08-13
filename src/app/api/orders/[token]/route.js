@@ -1,6 +1,66 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+function normalizePhone(rawPhone) {
+  if (!rawPhone) return '';
+  let phone = String(rawPhone).replace(/[^0-9]/g, '');
+  if (phone.startsWith('6208')) {
+    phone = '62' + phone.slice(4);
+  } else if (phone.startsWith('08')) {
+    phone = '62' + phone.slice(1);
+  } else if (phone.startsWith('0')) {
+    phone = '62' + phone.slice(1);
+  } else if (!phone.startsWith('62')) {
+    phone = '62' + phone;
+  }
+  return phone;
+}
+
+async function sendWhatsAppMessage(to, message) {
+  const rawUrl = process.env.WAHA_API_URL;
+  const apiKey = (process.env.WAHA_API_KEY || process.env.WHATSAPP_API_KEY || process.env.WAHA_KEY)?.trim();
+  const session = 'muara';
+
+  if (!rawUrl || !to || !message) return { success: false, error: 'Missing parameters' };
+
+  const baseUrl = rawUrl.trim().replace(/\/+$/, '');
+  const baseEndpoint = baseUrl.endsWith('/api/sendText') ? baseUrl : `${baseUrl}/api/sendText`;
+
+  const targetUrl = new URL(baseEndpoint);
+  if (apiKey) targetUrl.searchParams.set('x-api-key', apiKey);
+  targetUrl.searchParams.set('session', session);
+
+  const cleanPhone = normalizePhone(to);
+  const chatId = `${cleanPhone}@c.us`;
+
+  const payload = {
+    session,
+    chatId,
+    text: message
+  };
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (apiKey) {
+    headers['X-Api-Key'] = apiKey;
+  }
+
+  try {
+    const res = await fetch(targetUrl.toString(), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    const resText = await res.text();
+    let data;
+    try { data = JSON.parse(resText); } catch { data = resText; }
+    console.log('WAHA Notification sent to store:', chatId, res.status, data);
+    return { success: res.ok, data };
+  } catch (e) {
+    console.error('WAHA Notification error:', e);
+    return { success: false, error: e.message };
+  }
+}
+
 export async function GET(request, { params }) {
   const { token } = await params;
   if (!token) {
@@ -36,7 +96,7 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 });
   }
 
-  // Fetch store info (whatsapp, phone, name)
+  // Fetch store info (whatsapp, phone, name) separately
   const { data: store } = await supabase
     .from('stores')
     .select('whatsapp, phone, name')
@@ -94,34 +154,66 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'URL bukti pembayaran wajib diisi' }, { status: 400 });
   }
 
-  // Attempt update using payment_proof_url column
-  let { error } = await supabase
+  // 1. Fetch order by order_token (UUID), id, or invoice_number
+  let { data: order } = await supabase
     .from('orders')
-    .update({ payment_proof_url: paymentProofUrl, status: 'payment_uploaded' })
-    .eq('order_token', token);
+    .select('*')
+    .eq('order_token', token)
+    .maybeSingle();
 
-  // Fallback: if column doesn't exist in Supabase yet or token query failed, save to notes
-  if (error) {
-    console.warn('payment_proof_url column update failed, using notes fallback:', error.message);
-    let { data: currentOrder } = await supabase
-      .from('orders')
-      .select('notes')
-      .eq('order_token', token)
-      .maybeSingle();
+  if (!order && !isNaN(token)) {
+    const resById = await supabase.from('orders').select('*').eq('id', Number(token)).maybeSingle();
+    if (resById.data) order = resById.data;
+  }
+  if (!order) {
+    const resByInvoice = await supabase.from('orders').select('*').eq('invoice_number', token).maybeSingle();
+    if (resByInvoice.data) order = resByInvoice.data;
+  }
 
-    if (!currentOrder && !isNaN(token)) {
-      const resById = await supabase.from('orders').select('notes').eq('id', Number(token)).maybeSingle();
-      if (resById.data) currentOrder = resById.data;
-    }
+  if (!order) {
+    return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 });
+  }
 
-    const updatedNotes = [currentOrder?.notes, `Bukti Transfer: ${paymentProofUrl}`].filter(Boolean).join(' | ');
+  const updatedNotes = [order.notes, `Bukti Transfer: ${paymentProofUrl}`].filter(Boolean).join(' | ');
+
+  // 2. Update payment_proof_url and status to payment_uploaded
+  let { error: updateErr } = await supabase
+    .from('orders')
+    .update({
+      payment_proof_url: paymentProofUrl,
+      notes: updatedNotes,
+      status: 'payment_uploaded'
+    })
+    .eq('id', order.id);
+
+  if (updateErr) {
+    console.warn('payment_proof_url column update failed, using notes fallback:', updateErr.message);
     const fallbackRes = await supabase
       .from('orders')
       .update({ notes: updatedNotes, status: 'payment_uploaded' })
-      .eq('order_token', token);
+      .eq('id', order.id);
 
     if (fallbackRes.error) return NextResponse.json({ error: fallbackRes.error.message }, { status: 400 });
   }
 
-  return NextResponse.json({ success: true });
+  // 3. Fetch store info & send WA notification to store owner
+  const { data: store } = await supabase
+    .from('stores')
+    .select('whatsapp, phone')
+    .eq('id', order.store_id)
+    .maybeSingle();
+
+  const storeWa = store?.whatsapp || store?.phone;
+  if (storeWa) {
+    const baseUrl = 'https://muara-ai.vercel.app';
+    const orderToken = order.order_token || order.id;
+    const textMessage = `📎 *BUKTI TRANSFER DITERIMA!*\n\n` +
+      `Pelanggan *${order.customer_name}* telah mengunggah bukti pembayaran untuk pesanan *#${order.invoice_number}* (Total: Rp ${Number(order.total_amount).toLocaleString('id-ID')}).\n\n` +
+      `Silakan verifikasi & konfirmasi pembayaran di:\n` +
+      `🔗 ${baseUrl}/pesanan/kelola/${orderToken}`;
+
+    await sendWhatsAppMessage(storeWa, textMessage);
+  }
+
+  return NextResponse.json({ success: true, orderToken: order.order_token });
 }
