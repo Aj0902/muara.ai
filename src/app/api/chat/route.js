@@ -288,7 +288,7 @@ export async function POST(req) {
         };
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
 
         const response = await fetch(n8nWebhookUrl, {
           method: 'POST',
@@ -323,7 +323,16 @@ export async function POST(req) {
 
     // 6. Native Fallback Engine if n8n was not configured, failed, or returned empty reply
     if (!replyText) {
-      replyText = await generateNativeGeminiResponse({ type, message, store, products, history, cartItems });
+      try {
+        replyText = await generateNativeGeminiResponse({ type, message, store, products, history, cartItems });
+      } catch (gemErr) {
+        console.warn('Native Gemini Fallback error:', gemErr.message);
+        replyText = `Halo kak! Terima kasih sudah menghubungi ${store.name}. Untuk respon cepat, silakan tanyakan via WhatsApp atau gunakan formulir pemesanan web ya! 💬`;
+      }
+    }
+
+    if (!replyText) {
+      replyText = `Halo kak! Selamat datang di ${store.name}. Ada yang bisa kami bantu seputar produk atau pesanan Kakak? 😊`;
     }
 
     // 7. Save AI reply to chat logs database
@@ -337,6 +346,10 @@ export async function POST(req) {
     return NextResponse.json({ reply: replyText, products, storeInfo: store });
   } catch (error) {
     console.error('Chat API Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({
+      reply: 'Halo kak! Terjadi kendala teknis sementara pada AI. Silakan tanyakan rekomendasi produk atau hubungi kami via WhatsApp ya! 💬',
+      products: [],
+      storeInfo: null
+    }, { status: 200 });
   }
 }
