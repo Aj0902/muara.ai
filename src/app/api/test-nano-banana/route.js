@@ -25,21 +25,11 @@ export async function GET() {
           output_format: 'png'
         }
       }
-    },
-    {
-      name: 'KIE OpenAI Images API (v1/images/generations)',
-      url: 'https://api.kie.ai/v1/images/generations',
-      body: {
-        model: 'nano-banana-2',
-        prompt: 'A stunning modern storefront banner for an artisan shop, 4k resolution, professional photography',
-        n: 1,
-        size: '1024x1024'
-      }
     }
   ];
 
   const results = [];
-  let workingEndpoint = null;
+  let workingTask = null;
 
   for (const ep of endpointsToTest) {
     const startTime = Date.now();
@@ -72,8 +62,8 @@ export async function GET() {
         data: responseData
       });
 
-      if (isSuccess && !workingEndpoint) {
-        workingEndpoint = ep;
+      if (isSuccess && responseData.data?.taskId) {
+        workingTask = responseData.data;
       }
     } catch (err) {
       results.push({
@@ -87,11 +77,34 @@ export async function GET() {
     }
   }
 
-  if (workingEndpoint) {
+  if (workingTask) {
+    const taskId = workingTask.taskId;
+    let polledData = null;
+
+    // Polling task detail for 3 attempts (6s total)
+    for (let i = 0; i < 3; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      try {
+        const pollRes = await fetch(`https://api.kie.ai/api/v1/jobs/recordDetail?taskId=${taskId}`, {
+          headers: { 'Authorization': `Bearer ${apiKey}` }
+        });
+        if (pollRes.ok) {
+          polledData = await pollRes.json();
+          const imgUrl = polledData.data?.resultUrl || polledData.data?.response?.resultUrl || polledData.data?.url;
+          if (imgUrl) break;
+        }
+      } catch (err) {
+        console.warn('Polling error:', err.message);
+      }
+    }
+
     return NextResponse.json({
       status: 'SUCCESS',
-      message: '✅ Koneksi Nano-Banana-2 Image Generator Berhasil!',
-      workingEndpoint: workingEndpoint.name,
+      message: '✅ Task Nano-Banana-2 Berhasil Dibuat & Diproses!',
+      taskId,
+      createdTask: workingTask,
+      polledResult: polledData,
+      imageUrl: polledData?.data?.resultUrl || polledData?.data?.response?.resultUrl || polledData?.data?.url || 'Sedang diproses oleh KIE.ai server...',
       results
     }, { status: 200 });
   }
