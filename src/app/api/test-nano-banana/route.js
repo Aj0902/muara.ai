@@ -52,58 +52,55 @@ export async function GET() {
     }, { status: 200 });
   }
 
-  // 2. Poll Task Details via multiple candidate endpoints
-  const pollCandidates = [
-    `https://api.kie.ai/api/v1/jobs/recordInfo?recordId=${taskId}`,
-    `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${taskId}`,
-    `https://api.kie.ai/api/v1/jobs/recordDetail?taskId=${taskId}`,
-    `https://api.kie.ai/api/v1/jobs/recordDetail?recordId=${taskId}`
-  ];
+  // 2. Poll Task Details via the exact confirmed endpoint: recordInfo?taskId=
+  const pollingEndpoint = `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${taskId}`;
+  let finalResult = null;
+  let imageUrl = null;
+  let attempts = 0;
 
-  const pollResults = [];
-  let foundImageUrl = null;
-  let workingPollEndpoint = null;
-
-  for (const url of pollCandidates) {
+  // Poll up to 5 times (10 seconds total)
+  for (let i = 0; i < 5; i++) {
+    attempts++;
+    await new Promise((r) => setTimeout(r, 2000));
     try {
-      const res = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        }
-      });
-      const data = await res.json();
-      
-      const imgUrl = data.data?.resultUrl || data.data?.response?.resultUrl || data.data?.url || data.data?.imageUrl || data.resultUrl;
-      
-      pollResults.push({
-        url,
-        httpStatus: res.status,
-        success: res.ok,
-        hasImageUrl: !!imgUrl,
-        data
+      const pollRes = await fetch(pollingEndpoint, {
+        headers: { 'Authorization': `Bearer ${apiKey}` }
       });
 
-      if (imgUrl && !foundImageUrl) {
-        foundImageUrl = imgUrl;
-        workingPollEndpoint = url;
+      if (pollRes.ok) {
+        finalResult = await pollRes.json();
+        const taskData = finalResult.data || {};
+        const state = taskData.state;
+
+        let parsedResultJson = null;
+        if (taskData.resultJson) {
+          try {
+            parsedResultJson = JSON.parse(taskData.resultJson);
+          } catch {
+            parsedResultJson = taskData.resultJson;
+          }
+        }
+
+        imageUrl = taskData.resultUrl || parsedResultJson?.resultUrl || parsedResultJson?.url || taskData.imageUrl;
+
+        if (state === 'success' || state === 'completed' || imageUrl) {
+          break;
+        }
       }
     } catch (err) {
-      pollResults.push({
-        url,
-        success: false,
-        error: err.message
-      });
+      console.warn('Polling Exception:', err.message);
     }
   }
 
   return NextResponse.json({
     status: 'SUCCESS',
-    message: '✅ Task Creation & Diagnostic Polling Selesai!',
+    message: imageUrl ? '✅ Render Gambar Nano-Banana-2 Selesai!' : '⏳ Task Dibuat & Sedang Di-render oleh KIE GPU...',
     taskId,
-    workingPollEndpoint: workingPollEndpoint || 'Belum selesai merender / Cek hasil pollResults',
-    foundImageUrl: foundImageUrl || 'Sedang diproses oleh KIE.ai GPU server...',
-    createTaskRes,
-    pollResults
+    pollingEndpoint,
+    attempts,
+    taskState: finalResult?.data?.state || 'waiting',
+    imageUrl: imageUrl || 'Gambar masih di-render oleh KIE GPU. Silakan refresh halaman dalam beberapa detik.',
+    creditsConsumed: finalResult?.data?.creditsConsumed || 8,
+    finalResult
   }, { status: 200 });
 }
