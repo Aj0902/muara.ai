@@ -2,16 +2,37 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 export async function GET(request, { params }) {
-  const { token } = params;
+  const { token } = await params;
+  if (!token) {
+    return NextResponse.json({ error: 'Token pesanan tidak valid' }, { status: 400 });
+  }
   
-  // Fetch order with items
-  const { data: order, error } = await supabase
+  // Fetch order with items by order_token (UUID) or fallback id / invoice_number
+  let { data: order } = await supabase
     .from('orders')
     .select(`*, order_items (*)`)
     .eq('order_token', token)
-    .single();
-  
-  if (error || !order) {
+    .maybeSingle();
+
+  if (!order) {
+    if (!isNaN(token)) {
+      const resById = await supabase
+        .from('orders')
+        .select(`*, order_items (*)`)
+        .eq('id', Number(token))
+        .maybeSingle();
+      if (resById.data) order = resById.data;
+    } else {
+      const resByInvoice = await supabase
+        .from('orders')
+        .select(`*, order_items (*)`)
+        .eq('invoice_number', token)
+        .maybeSingle();
+      if (resByInvoice.data) order = resByInvoice.data;
+    }
+  }
+
+  if (!order) {
     return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 });
   }
 
@@ -20,7 +41,7 @@ export async function GET(request, { params }) {
     .from('stores')
     .select('whatsapp, phone, name')
     .eq('id', order.store_id)
-    .single();
+    .maybeSingle();
 
   order.store_whatsapp = store?.whatsapp || store?.phone || '';
   order.store_name = store?.name || '';
@@ -37,7 +58,7 @@ export async function GET(request, { params }) {
 }
 
 export async function PATCH(request, { params }) {
-  const { token } = params;
+  const { token } = await params;
   const { status } = await request.json();
 
   const allowedStatuses = ['pending', 'waiting_payment_proof', 'payment_uploaded', 'paid', 'cancelled', 'ready', 'completed'];
@@ -45,17 +66,28 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: 'Status tidak valid' }, { status: 400 });
   }
 
-  const { error } = await supabase
+  let { error } = await supabase
     .from('orders')
     .update({ status })
     .eq('order_token', token);
+
+  if (error) {
+    // Try updating by id or invoice_number
+    if (!isNaN(token)) {
+      const resById = await supabase.from('orders').update({ status }).eq('id', Number(token));
+      error = resById.error;
+    } else {
+      const resByInvoice = await supabase.from('orders').update({ status }).eq('invoice_number', token);
+      error = resByInvoice.error;
+    }
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ success: true });
 }
 
 export async function POST(request, { params }) {
-  const { token } = params;
+  const { token } = await params;
   const { paymentProofUrl } = await request.json();
 
   if (!paymentProofUrl) {
@@ -68,14 +100,19 @@ export async function POST(request, { params }) {
     .update({ payment_proof_url: paymentProofUrl, status: 'payment_uploaded' })
     .eq('order_token', token);
 
-  // Fallback: if column doesn't exist in Supabase yet, save to notes
+  // Fallback: if column doesn't exist in Supabase yet or token query failed, save to notes
   if (error) {
     console.warn('payment_proof_url column update failed, using notes fallback:', error.message);
-    const { data: currentOrder } = await supabase
+    let { data: currentOrder } = await supabase
       .from('orders')
       .select('notes')
       .eq('order_token', token)
-      .single();
+      .maybeSingle();
+
+    if (!currentOrder && !isNaN(token)) {
+      const resById = await supabase.from('orders').select('notes').eq('id', Number(token)).maybeSingle();
+      if (resById.data) currentOrder = resById.data;
+    }
 
     const updatedNotes = [currentOrder?.notes, `Bukti Transfer: ${paymentProofUrl}`].filter(Boolean).join(' | ');
     const fallbackRes = await supabase
