@@ -554,9 +554,18 @@ export default function StorefrontCartProvider({ children, store }) {
       });
 
       const data = await response.json();
+      const lowerText = text.toLowerCase();
+      const isCatalogQuery = lowerText.includes('katalog') || lowerText.includes('rekomendasi') || lowerText.includes('produk') || lowerText.includes('menu');
+      const isInfoQuery = lowerText.includes('lokasi') || lowerText.includes('alamat') || lowerText.includes('jam') || lowerText.includes('buka') || lowerText.includes('wa') || lowerText.includes('kontak');
+
       setCartMessages((prev) =>
         prev.map((msg) =>
-          msg.id === typingId ? { ...msg, text: data.reply || 'Maaf, ada kendala koneksi.' } : msg
+          msg.id === typingId ? {
+            ...msg,
+            text: data.reply || 'Maaf, ada kendala koneksi.',
+            productsList: isCatalogQuery ? (data.products || products) : null,
+            isInfoCard: isInfoQuery
+          } : msg
         )
       );
     } catch (err) {
@@ -594,9 +603,18 @@ export default function StorefrontCartProvider({ children, store }) {
       });
 
       const data = await response.json();
+      const lowerText = text.toLowerCase();
+      const isCatalogQuery = lowerText.includes('katalog') || lowerText.includes('rekomendasi') || lowerText.includes('produk') || lowerText.includes('menu');
+      const isInfoQuery = lowerText.includes('lokasi') || lowerText.includes('alamat') || lowerText.includes('jam') || lowerText.includes('buka') || lowerText.includes('wa') || lowerText.includes('kontak');
+
       setCSMessages((prev) =>
         prev.map((msg) =>
-          msg.id === typingId ? { ...msg, text: data.reply || 'Maaf, ada kendala koneksi.' } : msg
+          msg.id === typingId ? {
+            ...msg,
+            text: data.reply || 'Maaf, ada kendala koneksi.',
+            productsList: isCatalogQuery ? (data.products || products) : null,
+            isInfoCard: isInfoQuery
+          } : msg
         )
       );
     } catch (err) {
@@ -1193,7 +1211,90 @@ export default function StorefrontCartProvider({ children, store }) {
                         : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-slate-800/50 rounded-bl-sm shadow-sm'
                     }`}
                   >
-                    {msg.text}
+                    <div>{msg.text}</div>
+
+                    {/* Interactive Product Recommendation Cards */}
+                    {msg.productsList && msg.productsList.length > 0 && (
+                      <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 space-y-2 text-left">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">🛍️ Kartu Produk Rekomendasi:</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {msg.productsList.slice(0, 4).map((prod) => (
+                            <div key={prod.id || prod.name} className="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-xs flex flex-col justify-between">
+                              <div className="flex gap-2 items-start">
+                                {prod.image_url && (
+                                  <img src={prod.image_url} alt={prod.name} className="w-12 h-12 object-cover rounded-lg shrink-0 bg-slate-200" />
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{prod.name}</p>
+                                  <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">Rp {Number(prod.price).toLocaleString('id-ID')}</p>
+                                </div>
+                              </div>
+                              <div className="flex gap-1.5 mt-2 pt-2 border-t border-slate-200/40 dark:border-slate-850">
+                                <button
+                                  onClick={() => {
+                                    addToCart(prod);
+                                    alert(`✅ ${prod.name} berhasil ditambahkan ke keranjang!`);
+                                  }}
+                                  className="flex-1 py-1.5 px-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-[10px] font-bold transition-all text-center cursor-pointer"
+                                >
+                                  + Tambah
+                                </button>
+                                {store?.whatsapp && (
+                                  <a
+                                    href={`https://wa.me/${normalizePhone(store.whatsapp)}?text=${encodeURIComponent(`Halo ${store.name}, saya berminat dengan produk ${prod.name} (Rp ${Number(prod.price).toLocaleString('id-ID')})`)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold transition-all text-center shrink-0 cursor-pointer"
+                                  >
+                                    ⚡ WA
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Interactive Store Info Card */}
+                    {msg.isInfoCard && (
+                      <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-left space-y-2">
+                        <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+                          <div className="flex items-center gap-2 border-b border-slate-200/50 dark:border-slate-800 pb-1.5">
+                            <span className="w-5 h-5 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-600 flex items-center justify-center text-[10px] font-bold">📍</span>
+                            <span className="text-xs font-bold text-slate-800 dark:text-white">{store.name}</span>
+                          </div>
+                          <p className="text-[10px] text-slate-600 dark:text-slate-300">
+                            📌 <strong>Alamat:</strong> {store.address || 'Detail alamat via WA'}
+                          </p>
+                          <p className="text-[10px] text-slate-600 dark:text-slate-300">
+                            🕐 <strong>Jam Buka:</strong> {store.hours || 'Setiap Hari'}
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                            {store.whatsapp && (
+                              <a
+                                href={`https://wa.me/${normalizePhone(store.whatsapp)}?text=${encodeURIComponent(`Halo ${store.name}, saya mau bertanya seputar lokasi toko`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold text-center flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                              >
+                                <span>💬 Chat WA Admin</span>
+                              </a>
+                            )}
+                            {store.maps_link && (
+                              <a
+                                href={store.maps_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="py-1.5 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold text-center flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                              >
+                                <span>🗺️ Google Maps</span>
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1760,7 +1861,90 @@ export default function StorefrontCartProvider({ children, store }) {
                     : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-slate-800/50 rounded-bl-sm shadow-sm'
                 }`}
               >
-                {msg.text}
+                <div>{msg.text}</div>
+
+                {/* Interactive Product Recommendation Cards */}
+                {msg.productsList && msg.productsList.length > 0 && (
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 space-y-2 text-left">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">🛍️ Kartu Produk Rekomendasi:</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {msg.productsList.slice(0, 4).map((prod) => (
+                        <div key={prod.id || prod.name} className="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-xs flex flex-col justify-between">
+                          <div className="flex gap-2 items-start">
+                            {prod.image_url && (
+                              <img src={prod.image_url} alt={prod.name} className="w-12 h-12 object-cover rounded-lg shrink-0 bg-slate-200" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{prod.name}</p>
+                              <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">Rp {Number(prod.price).toLocaleString('id-ID')}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-1.5 mt-2 pt-2 border-t border-slate-200/40 dark:border-slate-850">
+                            <button
+                              onClick={() => {
+                                addToCart(prod);
+                                alert(`✅ ${prod.name} berhasil ditambahkan ke keranjang!`);
+                              }}
+                              className="flex-1 py-1.5 px-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-[10px] font-bold transition-all text-center cursor-pointer"
+                            >
+                              + Tambah
+                            </button>
+                            {store?.whatsapp && (
+                              <a
+                                href={`https://wa.me/${normalizePhone(store.whatsapp)}?text=${encodeURIComponent(`Halo ${store.name}, saya berminat dengan produk ${prod.name} (Rp ${Number(prod.price).toLocaleString('id-ID')})`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold transition-all text-center shrink-0 cursor-pointer"
+                              >
+                                ⚡ WA
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Interactive Store Info Card */}
+                {msg.isInfoCard && (
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-left space-y-2">
+                    <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+                      <div className="flex items-center gap-2 border-b border-slate-200/50 dark:border-slate-800 pb-1.5">
+                        <span className="w-5 h-5 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-600 flex items-center justify-center text-[10px] font-bold">📍</span>
+                        <span className="text-xs font-bold text-slate-800 dark:text-white">{store.name}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 dark:text-slate-300">
+                        📌 <strong>Alamat:</strong> {store.address || 'Detail alamat via WA'}
+                      </p>
+                      <p className="text-[10px] text-slate-600 dark:text-slate-300">
+                        🕐 <strong>Jam Buka:</strong> {store.hours || 'Setiap Hari'}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                        {store.whatsapp && (
+                          <a
+                            href={`https://wa.me/${normalizePhone(store.whatsapp)}?text=${encodeURIComponent(`Halo ${store.name}, saya mau bertanya seputar lokasi toko`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold text-center flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                          >
+                            <span>💬 Chat WA Admin</span>
+                          </a>
+                        )}
+                        {store.maps_link && (
+                          <a
+                            href={store.maps_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="py-1.5 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold text-center flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                          >
+                            <span>🗺️ Google Maps</span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}

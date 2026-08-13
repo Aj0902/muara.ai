@@ -315,7 +315,7 @@ export async function POST(req) {
       text: replyText
     });
 
-    return NextResponse.json({ reply: replyText });
+    return NextResponse.json({ reply: replyText, products, storeInfo: store });
   } catch (error) {
     console.error('Chat API Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
