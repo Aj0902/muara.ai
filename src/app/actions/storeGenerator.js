@@ -533,7 +533,16 @@ export async function createInstantStoreWithAI(formData) {
 
     const logoUrl = prof.logo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(storeName)}&background=C2410C&color=fff&size=150`;
 
-    // 3. Insert Store Profile to Supabase (FIXED COLUMNS: logo_url)
+    const cleanSlug = slugify(storeName);
+    const defaultInstagram = prof.instagram || `https://instagram.com/${cleanSlug}`;
+    const defaultTiktok = `https://tiktok.com/@${cleanSlug}`;
+    const defaultFacebook = `https://facebook.com/${cleanSlug}`;
+    const defaultMapsLink = `https://maps.google.com/?q=${encodeURIComponent(storeName)}`;
+    const defaultShopeeFood = category === 'kuliner' ? `https://shopee.co.id/universal-link` : `https://shopee.co.id/${cleanSlug}`;
+    const defaultGoFood = category === 'kuliner' ? `https://gofood.link/a/${cleanSlug}` : `https://tokopedia.com/${cleanSlug}`;
+    const defaultGrabFood = category === 'kuliner' ? `https://grab.onelink.me/${cleanSlug}` : `https://lazada.co.id/shop/${cleanSlug}`;
+
+    // 3. Insert Store Profile to Supabase (FIXED COLUMNS & ALL SOCIAL LINKS AUTO-FILLED)
     const { data: newStore, error: storeError } = await supabase
       .from('stores')
       .insert({
@@ -546,7 +555,13 @@ export async function createInstantStoreWithAI(formData) {
         address: prof.address || 'Jl. Utama No. 1',
         hours: prof.hours || 'Senin - Sabtu: 08.00 - 21.00 WIB',
         whatsapp: '0882000009822',
-        instagram: prof.instagram || `@${storeSlug}`,
+        instagram: defaultInstagram,
+        tiktok: defaultTiktok,
+        facebook: defaultFacebook,
+        maps_link: defaultMapsLink,
+        shopeefood: defaultShopeeFood,
+        gofood: defaultGoFood,
+        grabfood: defaultGrabFood,
         chatbot_name: prof.chatbot_name || `Asisten ${storeName}`,
         chatbot_persona: prof.chatbot_persona || 'Asisten Customer Service yang ramah dan sigap.',
         logo_url: logoUrl,
