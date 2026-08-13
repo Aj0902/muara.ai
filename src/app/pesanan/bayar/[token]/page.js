@@ -102,26 +102,9 @@ export default function CustomerPaymentPage() {
 
       // 3. Trigger WhatsApp notification to UMKM Store Owner to verify payment
       const storeWa = order?.store_whatsapp;
-      if (storeWa) {
-        const baseUrl = 'https://muara-ai.vercel.app';
-        const textMessage = `📎 *BUKTI TRANSFER DITERIMA!*\n\n` +
-          `Pelanggan *${order.customer_name}* telah mengunggah bukti pembayaran untuk pesanan *#${order.invoice_number}* (Total: Rp ${Number(order.total_amount).toLocaleString('id-ID')}).\n\n` +
-          `Silakan verifikasi & konfirmasi pembayaran di:\n` +
-          `🔗 ${baseUrl}/pesanan/kelola/${token}`;
-
-        await fetch('/api/whatsapp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: storeWa,
-            message: textMessage
-          })
-        });
-      }
-
       setUploadPreview(null);
       await fetchOrder();
-      alert('Bukti transfer berhasil dikirim! Mohon tunggu verifikasi dari penjual.');
+      alert('✅ BUKTI PEMBAYARAN BERHASIL TERKIRIM!\n\nNotifikasi pesan WhatsApp telah otomatis dikirimkan ke WhatsApp Toko & WhatsApp Anda.\nMohon tunggu verifikasi dari penjual.');
     } catch (e) {
       alert('Gagal mengunggah bukti: ' + e.message);
     } finally {

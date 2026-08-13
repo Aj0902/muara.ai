@@ -823,7 +823,7 @@ export async function updateOrderProof(orderId, proofUrl) {
         .eq('id', order.id);
     }
 
-    // 3. Fetch store info (whatsapp / phone) separately
+    // 3. Trigger WhatsApp notifications to BOTH store owner and customer
     const { data: store } = await supabase
       .from('stores')
       .select('whatsapp, phone')
@@ -831,15 +831,28 @@ export async function updateOrderProof(orderId, proofUrl) {
       .maybeSingle();
 
     const storeWa = store?.whatsapp || store?.phone;
+    const baseUrl = 'https://muara-ai.vercel.app';
+    const orderToken = order.order_token || order.id;
+
+    // Send WA to store owner
     if (storeWa) {
-      const baseUrl = 'https://muara-ai.vercel.app';
-      const orderToken = order.order_token || order.id;
-      const textMessage = `📎 *BUKTI TRANSFER DITERIMA!*\n\n` +
+      const storeMsg = `📎 *BUKTI TRANSFER DITERIMA!*\n\n` +
         `Pelanggan *${order.customer_name}* telah mengunggah bukti pembayaran untuk pesanan *#${order.invoice_number}* (Total: Rp ${Number(order.total_amount).toLocaleString('id-ID')}).\n\n` +
         `Silakan verifikasi & konfirmasi pembayaran di:\n` +
         `🔗 ${baseUrl}/pesanan/kelola/${orderToken}`;
 
-      await sendWhatsApp(storeWa, textMessage);
+      await sendWhatsApp(storeWa, storeMsg);
+    }
+
+    // Send WA confirmation to customer
+    if (order.customer_phone) {
+      const custMsg = `📎 *BUKTI TRANSFER TERKIRIM*\n\n` +
+        `Halo *${order.customer_name}*, bukti pembayaran Anda untuk pesanan *#${order.invoice_number}* (Total: Rp ${Number(order.total_amount).toLocaleString('id-ID')}) telah kami terima.\n\n` +
+        `Status saat ini: *Menunggu Verifikasi Penjual*\n\n` +
+        `Cek status: ${baseUrl}/pesanan/bayar/${orderToken}\n\n` +
+        `Terima kasih! 🙏`;
+
+      await sendWhatsApp(order.customer_phone, custMsg);
     }
 
     revalidatePath('/admin/pesanan');
