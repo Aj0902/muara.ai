@@ -21,7 +21,7 @@ export async function POST(request) {
 
     const rawUrl = process.env.WAHA_API_URL;
     const apiKey = process.env.WAHA_API_KEY?.trim();
-    const session = 'muara'; // Permanently set session to 'muara'
+    const session = 'muara';
 
     if (!rawUrl) {
       return NextResponse.json({
@@ -34,7 +34,12 @@ export async function POST(request) {
     }
 
     const baseUrl = rawUrl.trim().replace(/\/+$/, '');
-    const url = baseUrl.endsWith('/api/sendText') ? baseUrl : `${baseUrl}/api/sendText`;
+    const baseEndpoint = baseUrl.endsWith('/api/sendText') ? baseUrl : `${baseUrl}/api/sendText`;
+
+    // Append key and session to URL query params for maximum compatibility
+    const targetUrl = new URL(baseEndpoint);
+    if (apiKey) targetUrl.searchParams.set('x-api-key', apiKey);
+    targetUrl.searchParams.set('session', session);
 
     const cleanPhone = normalizePhone(to);
     const chatId = `${cleanPhone}@c.us`;
@@ -51,7 +56,7 @@ export async function POST(request) {
       headers['X-Api-Key'] = apiKey;
     }
 
-    const res = await fetch(url, {
+    const res = await fetch(targetUrl.toString(), {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)

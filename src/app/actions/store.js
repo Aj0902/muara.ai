@@ -30,7 +30,7 @@ function getBaseUrl() {
 async function sendWhatsApp(to, message) {
   const rawUrl = process.env.WAHA_API_URL;
   const apiKey = process.env.WAHA_API_KEY?.trim();
-  const session = 'muara'; // Permanently set session to 'muara'
+  const session = 'muara';
 
   if (!rawUrl || !to || !message) {
     console.warn('WAHA Notification skipped: Missing WAHA_API_URL, target phone, or message text', { hasUrl: !!rawUrl, to });
@@ -38,7 +38,12 @@ async function sendWhatsApp(to, message) {
   }
 
   const baseUrl = rawUrl.trim().replace(/\/+$/, '');
-  const url = baseUrl.endsWith('/api/sendText') ? baseUrl : `${baseUrl}/api/sendText`;
+  const baseEndpoint = baseUrl.endsWith('/api/sendText') ? baseUrl : `${baseUrl}/api/sendText`;
+
+  // Append key and session to URL query params for maximum compatibility
+  const targetUrl = new URL(baseEndpoint);
+  if (apiKey) targetUrl.searchParams.set('x-api-key', apiKey);
+  targetUrl.searchParams.set('session', session);
 
   const cleanPhone = normalizePhone(to);
   const chatId = `${cleanPhone}@c.us`;
@@ -56,7 +61,7 @@ async function sendWhatsApp(to, message) {
   }
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch(targetUrl.toString(), {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)

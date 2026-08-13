@@ -19,10 +19,11 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const phone = searchParams.get('phone');
   const customKey = searchParams.get('key');
+  const customSession = searchParams.get('session');
 
   const rawUrl = process.env.WAHA_API_URL;
   const rawApiKey = customKey || process.env.WAHA_API_KEY;
-  const session = 'muara'; // Permanently set session to 'muara'
+  const session = customSession?.trim() || 'muara';
 
   if (!rawUrl) {
     return NextResponse.json({
@@ -42,7 +43,11 @@ export async function GET(request) {
   }
 
   const baseUrl = rawUrl.trim().replace(/\/+$/, '');
-  const url = baseUrl.endsWith('/api/sendText') ? baseUrl : `${baseUrl}/api/sendText`;
+  const baseEndpoint = baseUrl.endsWith('/api/sendText') ? baseUrl : `${baseUrl}/api/sendText`;
+
+  const targetUrl = new URL(baseEndpoint);
+  if (rawApiKey) targetUrl.searchParams.set('x-api-key', rawApiKey.trim());
+  targetUrl.searchParams.set('session', session);
 
   const cleanPhone = normalizePhone(phone);
   const chatId = `${cleanPhone}@c.us`;
@@ -59,7 +64,7 @@ export async function GET(request) {
   }
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch(targetUrl.toString(), {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)
@@ -72,7 +77,7 @@ export async function GET(request) {
     return NextResponse.json({
       success: res.ok,
       httpStatus: res.status,
-      targetUrl: url,
+      targetUrl: targetUrl.toString(),
       payloadSent: payload,
       wahaResponse: data
     });
@@ -80,7 +85,7 @@ export async function GET(request) {
     return NextResponse.json({
       success: false,
       error: err.message,
-      targetUrl: url,
+      targetUrl: targetUrl.toString(),
       payloadSent: payload
     }, { status: 500 });
   }
