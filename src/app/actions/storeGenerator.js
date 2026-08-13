@@ -468,7 +468,9 @@ export async function createInstantStoreWithAI(formData) {
 
     const storeId = newStore.id;
 
-    // 4. Multi-Table Auto-Insert Products
+    // 4. Parallel Multi-Table Auto-Insert (Products, Journals, Gallery)
+    const insertTasks = [];
+
     if (prods.length > 0) {
       const prodInserts = prods.map((p) => ({
         store_id: storeId,
@@ -478,10 +480,9 @@ export async function createInstantStoreWithAI(formData) {
         image_url: p.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80',
         status: 'tersedia'
       }));
-      await supabase.from('products').insert(prodInserts);
+      insertTasks.push(supabase.from('products').insert(prodInserts));
     }
 
-    // 5. Multi-Table Auto-Insert Journals
     if (journs.length > 0) {
       const journInserts = journs.map((j) => ({
         store_id: storeId,
@@ -489,10 +490,9 @@ export async function createInstantStoreWithAI(formData) {
         content: j.content,
         image_url: j.image_url || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80'
       }));
-      await supabase.from('journals').insert(journInserts);
+      insertTasks.push(supabase.from('journals').insert(journInserts));
     }
 
-    // 6. Multi-Table Auto-Insert Gallery
     if (gals.length > 0) {
       const galInserts = gals.map((g, idx) => ({
         store_id: storeId,
@@ -500,10 +500,13 @@ export async function createInstantStoreWithAI(formData) {
         image_url: g.image_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&q=80',
         display_order: g.display_order || idx + 1
       }));
-      await supabase.from('gallery').insert(galInserts);
+      insertTasks.push(supabase.from('gallery').insert(galInserts));
     }
 
-    // 7. Auto Cookie Session Login
+    // Execute parallel insertions
+    await Promise.all(insertTasks);
+
+    // 5. Auto Cookie Session Login
     const cookieStore = await cookies();
     cookieStore.set('store_session', String(storeId), {
       httpOnly: true,
