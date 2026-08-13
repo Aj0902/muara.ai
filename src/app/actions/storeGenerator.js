@@ -324,70 +324,89 @@ async function generateCopywritingWithKIE(storeName, category, description) {
     return null;
   }
 
-  const prompt = `Anda adalah Pakar Copywriting & Branding UMKM Indonesia. Tugas Anda adalah meng-generate teks narasi toko yang emosional, profesional, dan ramah pembeli dalam format RAW JSON MURNI tanpa bungkus markdown.
+  const prompt = `Anda adalah Pakar Copywriting, Branding, dan USP Analyst UMKM Indonesia Tingkat Dewa. Tugas Anda adalah membaca, menganalisis, dan mempelajari deskripsi singkat bisnis dari user, lalu meracik seluruh narasi toko yang memuat POV Story (sudut pandang cerita pendiri), keunggulan utama (USP), dan gaya copywriting yang sangat MENJUAL (high-converting) dalam format RAW JSON MURNI tanpa bungkus markdown.
 
-Input Toko:
+INPUT DARI USER:
 - Nama Toko: "${storeName}"
 - Kategori Toko: "${category}" (fashion | kriya | kuliner)
-- Deskripsi Singkat Bisnis: "${description}"
+- Prompt Deskripsi Bisnis User: "${description}"
 
-Panduan Output JSON Wajib:
+MANDAT PENULISAN COPYWRITING (WAJIB PERHATIKAN):
+1. **EXTRACT POV STORY & USP DARI DESKRIPSI USER**:
+   - Pelajari ide bisnis di atas secara mendalam. JANGAN membuat teks generik/umum!
+   - story: Tuliskan cerita brand yang mendalam, emosional, dan inspiratif (2-3 paragraf) berdasarkan sudut pandang (POV) keunggulan khas/keunikan bisnis user.
+   - tagline: Buat tagline kreatif yang sangat menjual dan mencerminkan USP utama bisnis user.
+   - description: JANGAN MENYALIN MENTAH-MENTAH ketikan user! Rakit ulang deskripsi user menjadi kalimat copywriting yang singkat, padat, jelas, profesional, dan sangat MENJUAL.
+
+2. **PRODUK & JURNAL SPESIFIK SESUAI KONTEKS USER**:
+   - products: Generasikan 3 nama produk yang BENAR-BENAR SPESIFIK dan RELEVAN dengan bisnis user (bukan produk umum), sertakan harga realistis dan deskripsi produk yang menggiurkan.
+   - journals: Tulis 3 judul & artikel jurnal yang menceritakan filosofi produk, tips penggunaan, dan kisah pembuatan sesuai bisnis user.
+   - gallery: Tulis 3 caption galeri yang menggambarkan suasana workshop/dapur/studio toko.
+
+3. **INFORMASI KONTAK DEFAULT LENGKAP & AKTIF**:
+   - address: Generasikan alamat fisik toko yang lengkap dan realistis di kota Indonesia yang relevan.
+   - hours: Generasikan jam operasional spesifik (contoh: "Senin - Sabtu: 08.00 - 21.00 WIB").
+   - instagram: Buat handle instagram estetik (contoh: "@${slugify(storeName)}_official").
+   - chatbot_name: Nama Asisten AI CS yang ramah.
+   - chatbot_persona: Deskripsi karakter Asisten AI CS yang responsif.
+
+Panduan Output JSON Wajib (RAW JSON MURNI):
 {
   "profile": {
-    "tagline": "Tagline kreatif menarik",
-    "story": "Cerita brand emosional inspiratif (2-3 paragraf)",
-    "description": "Deskripsi toko SEO friendly",
-    "address": "Alamat fisik realistis di kota besar Indonesia",
-    "hours": "Jam operasional toko (contoh: Senin - Sabtu: 08.00 - 21.00 WIB)",
+    "tagline": "Tagline khas mencerminkan USP user",
+    "story": "Cerita brand POV emosional & inspiratif (2-3 paragraf)",
+    "description": "Hasil rakitan ulang deskripsi user yang singkat, padat, dan menjual",
+    "address": "Alamat toko fisik lengkap dan realistis",
+    "hours": "Jam operasional toko",
     "instagram": "@handle_instagram_toko",
     "chatbot_name": "Nama Asisten AI CS",
-    "chatbot_persona": "Deskripsi karakter ramah Asisten AI CS"
+    "chatbot_persona": "Deskripsi karakter Asisten AI CS"
   },
   "products": [
     {
-      "name": "Nama produk 1 kontekstual",
+      "name": "Nama produk 1 spesifik sesuai deskripsi user",
       "price": 150000,
-      "description": "Deskripsi produk 1 menarik (termasuk opsi ukuran/warna jika fashion/kriya)",
+      "description": "Deskripsi produk 1 yang menggiurkan dan menjual",
       "status": "tersedia"
     },
     {
-      "name": "Nama produk 2 kontekstual",
+      "name": "Nama produk 2 spesifik sesuai deskripsi user",
       "price": 250000,
-      "description": "Deskripsi produk 2 menarik",
+      "description": "Deskripsi produk 2 yang menggiurkan dan menjual",
       "status": "tersedia"
     },
     {
-      "name": "Nama produk 3 kontekstual",
+      "name": "Nama produk 3 spesifik sesuai deskripsi user",
       "price": 180000,
-      "description": "Deskripsi produk 3 menarik",
+      "description": "Deskripsi produk 3 yang menggiurkan dan menjual",
       "status": "tersedia"
     }
   ],
   "journals": [
     {
-      "title": "Judul artikel jurnal 1 inspiratif",
+      "title": "Judul artikel jurnal 1 menceritakan POV/filosofi bisnis",
       "content": "Isi artikel jurnal 1 emosional dan menarik"
     },
     {
-      "title": "Judul artikel jurnal 2 tips/cerita",
+      "title": "Judul artikel jurnal 2 tips/panduan relevan",
       "content": "Isi artikel jurnal 2 bermanfaat"
     },
     {
-      "title": "Judul artikel jurnal 3 gaya hidup",
-      "content": "Isi artikel jurnal 3 gaya hidup"
+      "title": "Judul artikel jurnal 3 gaya hidup/cerita pelanggan",
+      "content": "Isi artikel jurnal 3 inspiratif"
     }
   ],
   "gallery": [
     {
-      "caption": "Judul/caption foto galeri 1",
+      "caption": "Caption foto galeri 1 (suasana workshop/dapur)",
       "display_order": 1
     },
     {
-      "caption": "Judul/caption foto galeri 2",
+      "caption": "Caption foto galeri 2 (proses pembuatan)",
       "display_order": 2
     },
     {
-      "caption": "Judul/caption foto galeri 3",
+      "caption": "Caption foto galeri 3 (hasil karya)",
       "display_order": 3
     }
   ]
@@ -526,7 +545,7 @@ export async function createInstantStoreWithAI(formData) {
         description: prof.description || description,
         address: prof.address || 'Jl. Utama No. 1',
         hours: prof.hours || 'Senin - Sabtu: 08.00 - 21.00 WIB',
-        whatsapp: '081234567890',
+        whatsapp: '0882000009822',
         instagram: prof.instagram || `@${storeSlug}`,
         chatbot_name: prof.chatbot_name || `Asisten ${storeName}`,
         chatbot_persona: prof.chatbot_persona || 'Asisten Customer Service yang ramah dan sigap.',
