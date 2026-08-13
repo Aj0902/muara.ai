@@ -565,6 +565,8 @@ export async function createInstantStoreWithAI(formData) {
         chatbot_name: prof.chatbot_name || `Asisten ${storeName}`,
         chatbot_persona: prof.chatbot_persona || 'Asisten Customer Service yang ramah dan sigap.',
         logo_url: logoUrl,
+        hero_url: imageAssets.bannerUrl,
+        about_url: imageAssets.journalImages[0],
         username: username,
         password_hash: password
       })
