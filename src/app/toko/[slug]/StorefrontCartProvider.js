@@ -655,6 +655,35 @@ export default function StorefrontCartProvider({ children, store }) {
     });
   };
 
+  // Real-time background polling to sync payment card status in customer cart
+  useEffect(() => {
+    const paymentCards = cartMessages.filter(m => m.isPaymentCard && (m.orderToken || m.orderId));
+    if (paymentCards.length === 0) return;
+
+    const interval = setInterval(async () => {
+      for (const card of paymentCards) {
+        const token = card.orderToken || card.orderId;
+        try {
+          const res = await fetch(`/api/orders/${token}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.order && data.order.status !== card.status) {
+              setCartMessages(prev => prev.map(m => m.id === card.id ? {
+                ...m,
+                status: data.order.status,
+                proofUrl: data.order.payment_proof_url || m.proofUrl
+              } : m));
+            }
+          }
+        } catch {
+          // Silent ignore polling network glitches
+        }
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [cartMessages]);
+
   const handleCardProofUpload = async (messageId, file) => {
     const msg = cartMessages.find(m => m.id === messageId);
     if (!msg) return;
@@ -1062,11 +1091,11 @@ export default function StorefrontCartProvider({ children, store }) {
                         <div className="bg-slate-50 dark:bg-slate-950/80 p-3 rounded-xl border border-slate-100/50 dark:border-slate-850 text-[10px] text-left space-y-2 mt-2">
                           <div className="flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                            <span className="text-slate-500 dark:text-slate-400">Order Dibuat (Sukses)</span>
+                            <span className="text-slate-500 dark:text-slate-400">1. Order Dibuat (Sukses)</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
-                            <span className="font-semibold text-amber-600 dark:text-amber-400">Bukti Transfer Terkirim (Menunggu Verifikasi Penjual)</span>
+                            <span className="font-semibold text-amber-600 dark:text-amber-400">2. Bukti Transfer Terkirim (Menunggu Verifikasi Penjual)</span>
                           </div>
                         </div>
 
@@ -1081,28 +1110,65 @@ export default function StorefrontCartProvider({ children, store }) {
                           </div>
                         )}
                       </div>
+                    ) : msg.status === 'cancelled' ? (
+                      /* Status: Cancelled View */
+                      <div className="space-y-3 text-center py-3">
+                        <div className="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-950/30 text-rose-500 border border-rose-100 dark:border-rose-900/40 flex items-center justify-center mx-auto text-base font-bold">❌</div>
+                        <div>
+                          <p className="text-xs font-bold text-rose-600 dark:text-rose-400">Pesanan Dibatalkan</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed px-2">
+                            Bukti pembayaran / pesanan Anda ditolak atau dibatalkan oleh penjual. 
+                            <strong className="block text-slate-700 dark:text-slate-300 mt-1">Pemilik usaha akan menghubungi Anda melalui WhatsApp untuk mengkonfirmasi pesanan ini.</strong>
+                          </p>
+                        </div>
+
+                        {store?.whatsapp && (
+                          <a
+                            href={`https://wa.me/${normalizePhone(store.whatsapp)}?text=${encodeURIComponent(`Halo ${store.name}, saya mau menanyakan pesanan saya #${msg.invoiceNumber}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-[11px] transition-all shadow-sm mt-1"
+                          >
+                            <span>💬 Hubungi Pemilik Usaha via WhatsApp</span>
+                          </a>
+                        )}
+                      </div>
                     ) : (
-                      /* Lunas / paid View - status pesanan real-time */
+                      /* Lunas / paid View - ALAT TRACKING STATUS PESANAN REAL-TIME */
                       <div className="space-y-3 text-center py-2">
                         <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500 border border-emerald-100 dark:border-emerald-900/40 flex items-center justify-center mx-auto text-base font-bold">✓</div>
                         <div>
-                          <p className="text-xs font-bold text-slate-800 dark:text-white">Pembayaran Berhasil Diterima!</p>
-                          <p className="text-[9.5px] text-slate-400 mt-1">Status pesanan Anda telah diperbarui secara real-time.</p>
+                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Pembayaran Terverifikasi (LUNAS)</p>
+                          <p className="text-[9.5px] text-slate-400 mt-0.5">Pesanan Anda sedang diproses oleh penjual.</p>
                         </div>
-                        
-                        {/* Real-time Order status timeline */}
-                        <div className="bg-slate-50 dark:bg-slate-950/80 p-3 rounded-xl border border-slate-100/50 dark:border-slate-850 text-[10px] text-left space-y-2 mt-2">
+
+                        {/* ALAT TRACKING STATUS PESANAN TIMELINE */}
+                        <div className="bg-slate-50 dark:bg-slate-950/90 p-3 rounded-xl border border-slate-200/50 dark:border-slate-800 text-[10px] text-left space-y-2 mt-2">
+                          <p className="font-bold text-[9px] text-slate-400 uppercase tracking-wider border-b border-slate-150 dark:border-slate-800 pb-1">
+                            📍 Tracking Status Pesanan Real-Time:
+                          </p>
+
                           <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                            <span className="text-slate-500 dark:text-slate-400">Order Dibuat (Sukses)</span>
+                            <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px] font-bold shrink-0">✓</span>
+                            <span className="text-slate-600 dark:text-slate-300">1. Pesanan Dibuat</span>
                           </div>
+
                           <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">Pembayaran Terverifikasi (Lunas) ✓</span>
+                            <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px] font-bold shrink-0">✓</span>
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">2. Pembayaran Terverifikasi & Lunas</span>
                           </div>
+
                           <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700 animate-pulse shrink-0"></span>
-                            <span className="text-slate-400">Pesanan Sedang Diproses Toko</span>
+                            <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 ${
+                              msg.status === 'completed' 
+                                ? 'bg-emerald-500 text-white' 
+                                : 'bg-amber-500 text-white animate-pulse'
+                            }`}>
+                              {msg.status === 'completed' ? '✓' : '⚙️'}
+                            </span>
+                            <span className={msg.status === 'completed' ? 'text-slate-600 dark:text-slate-300' : 'font-semibold text-amber-600 dark:text-amber-400'}>
+                              3. {msg.status === 'ready' ? 'Pesanan Siap (Ready)' : msg.status === 'completed' ? 'Pesanan Selesai' : 'Pesanan Sedang Diproses Toko'}
+                            </span>
                           </div>
                         </div>
 
