@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import styles from '../../../orderPage.module.css';
 
-export default function CustomerPaymentPage({ params }) {
-  const { token } = params;
+export default function CustomerPaymentPage() {
+  const routeParams = useParams();
+  const token = routeParams?.token;
+
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -13,6 +16,7 @@ export default function CustomerPaymentPage({ params }) {
   const fileInputRef = useRef(null);
 
   const fetchOrder = useCallback(async () => {
+    if (!token) return;
     try {
       const res = await fetch(`/api/orders/${token}`);
       const data = await res.json();

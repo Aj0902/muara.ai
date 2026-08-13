@@ -1,16 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import styles from '../../../orderPage.module.css';
 
-export default function UMKMOrderPage({ params }) {
-  const { token } = params;
+export default function UMKMOrderPage() {
+  const routeParams = useParams();
+  const token = routeParams?.token;
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState('');
   const [error, setError] = useState('');
 
   const fetchOrder = useCallback(async () => {
+    if (!token) return;
     try {
       const res = await fetch(`/api/orders/${token}`);
       const data = await res.json();

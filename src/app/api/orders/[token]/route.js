@@ -15,14 +15,14 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 });
   }
 
-  // Fetch store info (whatsapp, name)
+  // Fetch store info (whatsapp, phone, name)
   const { data: store } = await supabase
     .from('stores')
-    .select('whatsapp, name')
+    .select('whatsapp, phone, name')
     .eq('id', order.store_id)
     .single();
 
-  order.store_whatsapp = store?.whatsapp || '';
+  order.store_whatsapp = store?.whatsapp || store?.phone || '';
   order.store_name = store?.name || '';
 
   // Fallback extraction of proof URL from notes if column is missing/null
