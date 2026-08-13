@@ -13,9 +13,85 @@ function slugify(text) {
     .replace(/^-+|-+$/g, '');
 }
 
-// Preset Fallback Starter Pack (Guarantees 100% Zero Blank Slate Registration)
+// ==========================================
+// WORKER 2: UNSPLASH IMAGE CURATOR ENGINE
+// (High-Resolution Curated Images per Category & Topic)
+// ==========================================
+const UNSPLASH_IMAGE_BANK = {
+  fashion: {
+    banner: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&q=80',
+    products: [
+      'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=800&q=80', // Kemeja batik / busana
+      'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&q=80', // Dress / gaun
+      'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=800&q=80', // Outer / jacket
+      'https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=800&q=80'  // Fashion collection
+    ],
+    journals: [
+      'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=800&q=80',
+      'https://images.unsplash.com/photo-1544441893-675973e31985?w=800&q=80',
+      'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80'
+    ],
+    gallery: [
+      'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&q=80',
+      'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=800&q=80',
+      'https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=800&q=80'
+    ]
+  },
+  kriya: {
+    banner: 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=1200&q=80',
+    products: [
+      'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80', // Kursi rotan / furnitur
+      'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80', // Anyaman keranjang
+      'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=800&q=80', // Ukiran kayu / ornamen
+      'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800&q=80'  // Kerajinan tangan
+    ],
+    journals: [
+      'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=800&q=80',
+      'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80',
+      'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80'
+    ],
+    gallery: [
+      'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=800&q=80',
+      'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80',
+      'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=800&q=80'
+    ]
+  },
+  kuliner: {
+    banner: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&q=80',
+    products: [
+      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80', // Makanan utama
+      'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80', // Snack / makanan ringan
+      'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=800&q=80', // Minuman segar
+      'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80'  // Hidangan resto
+    ],
+    journals: [
+      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80',
+      'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80',
+      'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=800&q=80'
+    ],
+    gallery: [
+      'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80',
+      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80',
+      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80'
+    ]
+  }
+};
+
+function curateImagesForStore(category) {
+  const cat = (category || 'kuliner').toLowerCase();
+  const bank = UNSPLASH_IMAGE_BANK[cat] || UNSPLASH_IMAGE_BANK.kuliner;
+  return {
+    bannerUrl: bank.banner,
+    productImages: bank.products,
+    journalImages: bank.journals,
+    galleryImages: bank.gallery
+  };
+}
+
+// Preset Fallback Starter Pack
 function getCategoryPresetFallback(storeName, category, description) {
   const cat = (category || 'kuliner').toLowerCase();
+  const images = curateImagesForStore(cat);
 
   if (cat === 'fashion') {
     return {
@@ -28,28 +104,28 @@ function getCategoryPresetFallback(storeName, category, description) {
         instagram: `@${slugify(storeName)}_official`,
         chatbot_name: `Asisten Busana ${storeName}`,
         chatbot_persona: 'Asisten Customer Service yang ramah, paham panduan ukuran (size chart), dan siap merekomendasikan busana terbaik.',
-        banner_url: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&q=80'
+        logo_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(storeName)}&background=C2410C&color=fff&size=150`
       },
       products: [
         {
           name: `Kemeja Batik Elegan ${storeName}`,
           price: 245000,
           description: 'Kemeja batik pria katun primisima premium. Adem dan jahitan rapi. Ukuran: S, M, L, XL | Warna: Navy, Black',
-          image_url: 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=600&q=80',
+          image_url: images.productImages[0],
           status: 'tersedia'
         },
         {
           name: `Dress Motif Modern ${storeName}`,
           price: 320000,
           description: 'Gaun wanita modern elegan cocok untuk acara santai maupun pesta. Ukuran: S, M, L | Warna: Maroon, Cream',
-          image_url: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&q=80',
+          image_url: images.productImages[1],
           status: 'tersedia'
         },
         {
           name: `Outer Premium Casual ${storeName}`,
           price: 275000,
           description: 'Outer serbaguna dengan bahan nyaman untuk padupadan OOTD harian Anda. Ukuran: All Size | Warna: Mocca',
-          image_url: 'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?w=600&q=80',
+          image_url: images.productImages[2],
           status: 'tersedia'
         }
       ],
@@ -57,33 +133,33 @@ function getCategoryPresetFallback(storeName, category, description) {
         {
           title: `Kisah Di Balik Peluncuran ${storeName}`,
           content: `${storeName} didirikan dengan impian memberikan pengalaman berbusana yang memikat dan penuh gaya. Kami terus berinovasi menghasilkan karya terbaik bagi para pelanggan kami.`,
-          image_url: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=800&q=80'
+          image_url: images.journalImages[0]
         },
         {
           title: 'Tips Merawat Busana Agar Warna Awet',
           content: 'Cuci pakaian dengan deterjen lembut, hindari memeras terlalu kuat, dan jemur di tempat teduh agar warna kain tetap cemerlang.',
-          image_url: 'https://images.unsplash.com/photo-1544441893-675973e31985?w=800&q=80'
+          image_url: images.journalImages[1]
         },
         {
           title: 'Inspirasi OOTD Elegan Untuk Acara Formal',
           content: 'Padukan outer bermotif dengan celana bahan netral untuk memberikan kesan profesional sekaligus modis.',
-          image_url: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80'
+          image_url: images.journalImages[2]
         }
       ],
       gallery: [
         {
           caption: 'Proses Quality Control Pakaian',
-          image_url: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=600&q=80',
+          image_url: images.galleryImages[0],
           display_order: 1
         },
         {
           caption: 'Sudut Galeri Studio Kami',
-          image_url: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=600&q=80',
+          image_url: images.galleryImages[1],
           display_order: 2
         },
         {
           caption: 'Koleksi Busana Terbaru',
-          image_url: 'https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=600&q=80',
+          image_url: images.galleryImages[2],
           display_order: 3
         }
       ]
@@ -99,28 +175,28 @@ function getCategoryPresetFallback(storeName, category, description) {
         instagram: `@${slugify(storeName)}_craft`,
         chatbot_name: `Asisten Workshop ${storeName}`,
         chatbot_persona: 'Asisten Customer Service yang mahir spesifikasi custom PO, finishing kayu/rotan, dan pengiriman aman.',
-        banner_url: 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=1200&q=80'
+        logo_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(storeName)}&background=C2410C&color=fff&size=150`
       },
       products: [
         {
           name: `Kursi Rotan Estetik ${storeName}`,
           price: 480000,
           description: 'Kursi bersantai rotan sintetis kokoh dan alami. Cocok untuk sudut teras atau ruang tamu. Ukuran: 60x65x75cm',
-          image_url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600&q=80',
+          image_url: images.productImages[0],
           status: 'tersedia'
         },
         {
           name: `Keranjang Anyaman Dekoratif ${storeName}`,
           price: 135000,
           description: 'Keranjang serbaguna dari bahan serat alami untuk wadah tanaman atau tempat penyimpanan. Diameter: 30cm',
-          image_url: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=600&q=80',
+          image_url: images.productImages[1],
           status: 'tersedia'
         },
         {
           name: `Hiasan Dinding Kayu Ukir ${storeName}`,
           price: 220000,
           description: 'Ornamen dinding ukiran artistik kayu jati asli dengan finishing natural smooth.',
-          image_url: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=600&q=80',
+          image_url: images.productImages[2],
           status: 'tersedia'
         }
       ],
@@ -128,33 +204,33 @@ function getCategoryPresetFallback(storeName, category, description) {
         {
           title: `Seni Menganyam Rotan di ${storeName}`,
           content: 'Menganyam rotan adalah perpaduan ketelitian jemari dan jiwa seni. Setiap pola anyaman menceritakan dedikasi para perajin kami.',
-          image_url: 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=800&q=80'
+          image_url: images.journalImages[0]
         },
         {
           title: 'Merawat Furnitur Rotan Agar Tetap Mengilap',
           content: 'Bersihkan debu dengan sikat halus secara berkala dan lap dengan kain setengah lembap untuk menjaga kelembapan alami rotan.',
-          image_url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80'
+          image_url: images.journalImages[1]
         },
         {
           title: 'Menata Ruangan Bertema Alami & Minimalis',
           content: 'Sentuhan elemen kayu dan rotan memberikan kehangatan alami yang menenangkan di tengah suasana hunian modern.',
-          image_url: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80'
+          image_url: images.journalImages[2]
         }
       ],
       gallery: [
         {
           caption: 'Proses Finishing Anyaman Rotan',
-          image_url: 'https://images.unsplash.com/photo-1538688525198-9b88f6f53126?w=600&q=80',
+          image_url: images.galleryImages[0],
           display_order: 1
         },
         {
           caption: 'Sudut Workshop Kerajinan',
-          image_url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600&q=80',
+          image_url: images.galleryImages[1],
           display_order: 2
         },
         {
           caption: 'Hasil Karya Kriya Terpilih',
-          image_url: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=600&q=80',
+          image_url: images.galleryImages[2],
           display_order: 3
         }
       ]
@@ -171,28 +247,28 @@ function getCategoryPresetFallback(storeName, category, description) {
         instagram: `@${slugify(storeName)}_kuliner`,
         chatbot_name: `Asisten Dapur ${storeName}`,
         chatbot_persona: 'Asisten Customer Service yang ramah, paham menu lezat, dan sigap membantu pemesanan tempat/takeaway.',
-        banner_url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&q=80'
+        logo_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(storeName)}&background=C2410C&color=fff&size=150`
       },
       products: [
         {
           name: `Menu Spesial Utama ${storeName}`,
           price: 45000,
           description: 'Sajian hidangan khas racikan chef dengan bumbu rempah segar dan aroma menggiurkan.',
-          image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80',
+          image_url: images.productImages[0],
           status: 'tersedia'
         },
         {
           name: `Camilan Renyah Favorit ${storeName}`,
           price: 25000,
           description: 'Snack goreng renyah bumbu gurih garing cocok menemani santai bersama teman.',
-          image_url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80',
+          image_url: images.productImages[1],
           status: 'tersedia'
         },
         {
           name: `Minuman Segar Dingin ${storeName}`,
           price: 18000,
           description: 'Minuman dingin penyegar dahaga dengan perpaduan rasa buah manis dan es segar.',
-          image_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=600&q=80',
+          image_url: images.productImages[2],
           status: 'tersedia'
         }
       ],
@@ -200,33 +276,33 @@ function getCategoryPresetFallback(storeName, category, description) {
         {
           title: `Rahasia Kelezatan Dapur ${storeName}`,
           content: 'Kami meyakini masakan yang lezat lahir dari ketulusan meracik bumbu rempah pilihan dan bahan makanan yang segar.',
-          image_url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80'
+          image_url: images.journalImages[0]
         },
         {
           title: 'Suasana Nyaman Bersantap Bersama Keluarga',
           content: 'Nikmati suasana bersantap yang hangat dan pelayanan terbaik dari seluruh tim kuliner kami.',
-          image_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80'
+          image_url: images.journalImages[1]
         },
         {
           title: 'Sensasi Minuman Segar Penutup Santap Siang',
           content: 'Segarkan harimu dengan pilihan varian racikan minuman spesial dingin dari resto kami.',
-          image_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=800&q=80'
+          image_url: images.journalImages[2]
         }
       ],
       gallery: [
         {
           caption: 'Suasana Resto & Dapur',
-          image_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&q=80',
+          image_url: images.galleryImages[0],
           display_order: 1
         },
         {
           caption: 'Penyajian Makanan Segar',
-          image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80',
+          image_url: images.galleryImages[1],
           display_order: 2
         },
         {
           caption: 'Racikan Bumbu Rempah',
-          image_url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=80',
+          image_url: images.galleryImages[2],
           display_order: 3
         }
       ]
@@ -234,8 +310,10 @@ function getCategoryPresetFallback(storeName, category, description) {
   }
 }
 
-// Call KIE.ai OpenAI-Compatible & Gemini API Endpoints
-async function generateStoreContentWithKIE(storeName, category, description) {
+// ==========================================
+// WORKER 1: COPYWRITING AI LLM ENGINE
+// ==========================================
+async function generateCopywritingWithKIE(storeName, category, description) {
   const apiKey = (process.env.KIE_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)?.trim();
   const rawModel = process.env.KIE_MODEL_NAME;
   const modelName = (!rawModel || rawModel === 'KIE_MODEL_NAME') ? 'gemini-3-5-flash' : rawModel.trim();
@@ -243,11 +321,10 @@ async function generateStoreContentWithKIE(storeName, category, description) {
   const userBaseUrl = (!rawBaseUrl || rawBaseUrl.includes('KIE_API_BASE_URL')) ? 'https://api.kie.ai/v1' : rawBaseUrl.trim();
 
   if (!apiKey || apiKey === 'your_kie_api_key_here') {
-    console.warn('KIE_API_KEY is not configured, fallback to category preset.');
-    return getCategoryPresetFallback(storeName, category, description);
+    return null;
   }
 
-  const prompt = `Anda adalah AI Instant Store Creator profesional. Tugas Anda adalah meng-generate 100% data toko baru secara lengkap, kontekstual, menarik, dan ramah pembeli dalam format RAW JSON MURNI tanpa bungkus markdown.
+  const prompt = `Anda adalah Pakar Copywriting & Branding UMKM Indonesia. Tugas Anda adalah meng-generate teks narasi toko yang emosional, profesional, dan ramah pembeli dalam format RAW JSON MURNI tanpa bungkus markdown.
 
 Input Toko:
 - Nama Toko: "${storeName}"
@@ -264,63 +341,53 @@ Panduan Output JSON Wajib:
     "hours": "Jam operasional toko (contoh: Senin - Sabtu: 08.00 - 21.00 WIB)",
     "instagram": "@handle_instagram_toko",
     "chatbot_name": "Nama Asisten AI CS",
-    "chatbot_persona": "Deskripsi karakter ramah Asisten AI CS",
-    "banner_url": "URL Unsplash HD relevan"
+    "chatbot_persona": "Deskripsi karakter ramah Asisten AI CS"
   },
   "products": [
     {
       "name": "Nama produk 1 kontekstual",
       "price": 150000,
       "description": "Deskripsi produk 1 menarik (termasuk opsi ukuran/warna jika fashion/kriya)",
-      "image_url": "URL Unsplash HD produk 1",
       "status": "tersedia"
     },
     {
       "name": "Nama produk 2 kontekstual",
       "price": 250000,
       "description": "Deskripsi produk 2 menarik",
-      "image_url": "URL Unsplash HD produk 2",
       "status": "tersedia"
     },
     {
       "name": "Nama produk 3 kontekstual",
       "price": 180000,
       "description": "Deskripsi produk 3 menarik",
-      "image_url": "URL Unsplash HD produk 3",
       "status": "tersedia"
     }
   ],
   "journals": [
     {
       "title": "Judul artikel jurnal 1 inspiratif",
-      "content": "Isi artikel jurnal 1 emosional dan menarik",
-      "image_url": "URL Unsplash HD banner 1"
+      "content": "Isi artikel jurnal 1 emosional dan menarik"
     },
     {
       "title": "Judul artikel jurnal 2 tips/cerita",
-      "content": "Isi artikel jurnal 2 bermanfaat",
-      "image_url": "URL Unsplash HD banner 2"
+      "content": "Isi artikel jurnal 2 bermanfaat"
     },
     {
       "title": "Judul artikel jurnal 3 gaya hidup",
-      "content": "Isi artikel jurnal 3 gaya hidup",
-      "image_url": "URL Unsplash HD banner 3"
+      "content": "Isi artikel jurnal 3 gaya hidup"
     }
   ],
   "gallery": [
     {
       "caption": "Judul/caption foto galeri 1",
-      "image_url": "URL Unsplash HD galeri 1",
       "display_order": 1
     },
     {
       "caption": "Judul/caption foto galeri 2",
-      "image_url": "URL Unsplash HD galeri 2",
       "display_order": 2
     },
     {
       "caption": "Judul/caption foto galeri 3",
-      "image_url": "URL Unsplash HD galeri 3",
       "display_order": 3
     }
   ]
@@ -357,7 +424,7 @@ Panduan Output JSON Wajib:
           body: JSON.stringify({
             model: modelName,
             messages: [
-              { role: 'system', content: 'Anda adalah AI Instant Store Creator yang mengembalikan RAW JSON murni.' },
+              { role: 'system', content: 'Anda adalah Pakar Copywriting UMKM yang mengembalikan RAW JSON murni.' },
               { role: 'user', content: prompt }
             ],
             response_format: { type: 'json_object' }
@@ -365,7 +432,6 @@ Panduan Output JSON Wajib:
           signal: controller.signal
         });
       } else {
-        // gemini_direct
         res = await fetch(ep.url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -387,24 +453,23 @@ Panduan Output JSON Wajib:
           rawContent = resJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
         }
 
-        const cleanText = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
-        const data = JSON.parse(cleanText);
-
-        if (data && data.profile && Array.isArray(data.products) && data.products.length > 0) {
-          console.log(`Successfully generated store content via ${ep.url}`);
-          return data;
+        const match = rawContent.match(/\{[\s\S]*\}/);
+        if (match) {
+          const data = JSON.parse(match[0]);
+          if (data && data.profile && Array.isArray(data.products) && data.products.length > 0) {
+            return data;
+          }
         }
       }
     } catch (err) {
-      console.warn(`KIE.ai Candidate Endpoint ${ep.url} failed:`, err.message);
+      console.warn(`Copywriting Worker Candidate Endpoint ${ep.url} failed:`, err.message);
     }
   }
 
-  console.warn('All KIE endpoints failed or timed out. Executing Category Preset Fallback.');
-  return getCategoryPresetFallback(storeName, category, description);
+  return null;
 }
 
-// Master Onboarding Generator Server Action
+// Master Dual-Worker Onboarding Generator Server Action
 export async function createInstantStoreWithAI(formData) {
   const storeName = formData.get('store_name')?.trim();
   const category = (formData.get('category') || 'kuliner').trim().toLowerCase();
@@ -434,14 +499,22 @@ export async function createInstantStoreWithAI(formData) {
       storeSlug = `${baseSlug}-${counter++}`;
     }
 
-    // 2. Execute AI Content Generation (or Preset Fallback)
-    const generatedData = await generateStoreContentWithKIE(storeName, category, description);
-    const prof = generatedData.profile || {};
-    const prods = generatedData.products || [];
-    const journs = generatedData.journals || [];
-    const gals = generatedData.gallery || [];
+    // 2. RUN WORKER 1 (Copywriting LLM) & WORKER 2 (Image Curator) IN PARALLEL
+    const [copywritingData, imageAssets] = await Promise.all([
+      generateCopywritingWithKIE(storeName, category, description),
+      Promise.resolve(curateImagesForStore(category))
+    ]);
 
-    // 3. Insert Store Profile to Supabase
+    // Merge Copywriting + Image Curator assets
+    const fallbackPreset = getCategoryPresetFallback(storeName, category, description);
+    const prof = copywritingData?.profile || fallbackPreset.profile;
+    const rawProds = copywritingData?.products || fallbackPreset.products;
+    const rawJourns = copywritingData?.journals || fallbackPreset.journals;
+    const rawGals = copywritingData?.gallery || fallbackPreset.gallery;
+
+    const logoUrl = prof.logo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(storeName)}&background=C2410C&color=fff&size=150`;
+
+    // 3. Insert Store Profile to Supabase (FIXED COLUMNS: logo_url)
     const { data: newStore, error: storeError } = await supabase
       .from('stores')
       .insert({
@@ -457,47 +530,53 @@ export async function createInstantStoreWithAI(formData) {
         instagram: prof.instagram || `@${storeSlug}`,
         chatbot_name: prof.chatbot_name || `Asisten ${storeName}`,
         chatbot_persona: prof.chatbot_persona || 'Asisten Customer Service yang ramah dan sigap.',
-        banner_url: prof.banner_url || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&q=80',
+        logo_url: logoUrl,
         username: username,
-        password: password
+        password_hash: password
       })
       .select()
       .single();
 
-    if (storeError) throw storeError;
+    if (storeError) {
+      console.error('Store Insertion Error:', storeError);
+      throw new Error(`Gagal menyimpan profil toko: ${storeError.message}`);
+    }
 
     const storeId = newStore.id;
 
-    // 4. Parallel Multi-Table Auto-Insert (Products, Journals, Gallery)
+    // 4. Parallel Multi-Table Auto-Insert (Products, Journals, Gallery with curated Unsplash images)
     const insertTasks = [];
 
-    if (prods.length > 0) {
-      const prodInserts = prods.map((p) => ({
+    // Products
+    if (rawProds.length > 0) {
+      const prodInserts = rawProds.map((p, idx) => ({
         store_id: storeId,
         name: p.name,
         price: Number(p.price) || 100000,
         description: p.description || '',
-        image_url: p.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80',
+        image_url: imageAssets.productImages[idx % imageAssets.productImages.length],
         status: 'tersedia'
       }));
       insertTasks.push(supabase.from('products').insert(prodInserts));
     }
 
-    if (journs.length > 0) {
-      const journInserts = journs.map((j) => ({
+    // Journals
+    if (rawJourns.length > 0) {
+      const journInserts = rawJourns.map((j, idx) => ({
         store_id: storeId,
         title: j.title,
         content: j.content,
-        image_url: j.image_url || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80'
+        image_url: imageAssets.journalImages[idx % imageAssets.journalImages.length]
       }));
       insertTasks.push(supabase.from('journals').insert(journInserts));
     }
 
-    if (gals.length > 0) {
-      const galInserts = gals.map((g, idx) => ({
+    // Gallery
+    if (rawGals.length > 0) {
+      const galInserts = rawGals.map((g, idx) => ({
         store_id: storeId,
         caption: g.caption || `Galeri ${idx + 1}`,
-        image_url: g.image_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&q=80',
+        image_url: imageAssets.galleryImages[idx % imageAssets.galleryImages.length],
         display_order: g.display_order || idx + 1
       }));
       insertTasks.push(supabase.from('gallery').insert(galInserts));
