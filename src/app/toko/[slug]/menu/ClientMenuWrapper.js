@@ -28,17 +28,17 @@ export default function ClientMenuWrapper({ store, categories, products }) {
         <div>
           <h1 className="font-serif text-3xl sm:text-4xl font-bold text-slate-800 dark:text-white">
             {store.category === 'fashion'
-              ? 'Katalog Busana & OOTD'
+              ? 'Katalog Produk & Busana'
               : store.category === 'kriya'
-              ? 'Katalog Kerajinan Rotan'
-              : 'Daftar Menu Utama'}
+              ? 'Katalog Karya Kriya'
+              : 'Daftar Menu & Produk'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
             {store.category === 'fashion'
-              ? 'Temukan aneka batik Megamendung, gamis, dan kemeja premium khas Trusmi.'
+              ? 'Temukan pilihan produk fashion & gaya busana eksklusif kami.'
               : store.category === 'kriya'
-              ? 'Temukan aneka perabotan rotan alami & sintetis kualitas ekspor.'
-              : 'Temukan sajian lezat terbaik dari dapur resep asli kami.'}
+              ? 'Temukan aneka hasil karya kriya & kerajinan tangan berkualitas.'
+              : 'Temukan sajian lezat & olahan terbaik dari dapur kami.'}
           </p>
         </div>
         
@@ -51,10 +51,10 @@ export default function ClientMenuWrapper({ store, categories, products }) {
             type="text"
             placeholder={
               store.category === 'fashion'
-                ? 'Cari kemeja, gamis, batik, atau size...'
+                ? 'Cari produk fashion, aksesoris, atau ukuran...'
                 : store.category === 'kriya'
-                ? 'Cari kursi rotan, keranjang, atau meja...'
-                : 'Cari menu makanan atau minuman...'
+                ? 'Cari produk kriya, dekorasi, atau kerajinan...'
+                : 'Cari produk makanan, olahan, atau minuman...'
             }
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}

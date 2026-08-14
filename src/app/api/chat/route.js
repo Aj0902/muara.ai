@@ -65,16 +65,16 @@ function extractReplyText(input) {
 // Generate Category Specific Vocabulary & Rules
 function getCategoryInstructions(category) {
   if (category === 'fashion') {
-    return '1. Kategori = FASHION (toko menjual BUSANA/PAKAIAN/BATIK).\n' +
+    return '1. Kategori = FASHION (toko menjual PRODUK FASHION/BUSANA/GAYA HIDUP).\n' +
       '2. DILARANG memakai kata: "menu", "makanan", "minuman", "dapur", "lezat", "rasa", atau "meja".\n' +
-      '3. GUNAKAN istilah: "katalog busana", "pakaian/batik", "panduan ukuran (size chart)", "packing", "pengiriman kurir/ekspedisi".';
+      '3. GUNAKAN istilah: "katalog fashion", "produk fashion", "panduan ukuran (size chart)", "pengiriman kurir/ekspedisi".';
   } else if (category === 'kriya') {
-    return '1. Kategori = KRIYA (toko menjual KERAJINAN TANGAN/FURNITURE ROTAN).\n' +
-      '2. DILARANG memakai kata: "menu", "makanan", "minuman", "dapur", "lezat", "rasa", atau "meja makan/resto".\n' +
-      '3. GUNAKAN istilah: "katalog kerajinan rotan", "perabotan", "spesifikasi custom / Pre-Order (PO)", "workshop", "quality control/finishing".';
+    return '1. Kategori = KRIYA (toko menjual KERAJINAN TANGAN/ARTISAN CRAFT/SENI KRIYA).\n' +
+      '2. DILARANG memakai kata: "menu makanan", "dapur", "lezat", "rasa", atau "meja resto".\n' +
+      '3. GUNAKAN istilah: "katalog karya kriya", "kerajinan tangan", "spesifikasi custom / Pre-Order (PO)", "workshop/studio", "quality control".';
   } else {
-    return '1. Kategori = KULINER (toko menjual KULINER/RESTO/CAFE).\n' +
-      '2. GUNAKAN istilah: "menu makanan & minuman", "sajian lezat", "racikan dapur", "layanan Makan di Tempat (Meja 1-20)" atau "Take Away".';
+    return '1. Kategori = KULINER (toko menjual PRODUK KULINER/KATERING/BAKERY/FROZEN FOOD/MINUMAN).\n' +
+      '2. GUNAKAN istilah: "katalog produk kuliner", "sajian lezat", "racikan khas", "layanan Pengantar/Dine-In/Take Away".';
   }
 }
 

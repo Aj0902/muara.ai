@@ -210,7 +210,7 @@ export default function RegisterPage() {
                 required
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
-                placeholder="Contoh: Batik Kencana Trusmi"
+                placeholder="Contoh: Dapur Mama, Kencana Crafts, atau Senja Apparel"
                 className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs focus:outline-none focus:border-orange-500 transition-colors"
               />
             </div>
@@ -222,9 +222,9 @@ export default function RegisterPage() {
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs focus:outline-none focus:border-orange-500 transition-colors cursor-pointer"
               >
-                <option value="kuliner">🍽️ Kuliner (Makanan & Minuman)</option>
-                <option value="fashion">👗 Fashion & Sandang</option>
-                <option value="kriya">🛠️ Kriya & Kerajinan Tangan</option>
+                <option value="kuliner">🍽️ Kuliner (Makanan, Minuman, Bakery, Katering, dll)</option>
+                <option value="fashion">👗 Fashion (Pakaian, Hijab, Streetwear, Sepatu, dll)</option>
+                <option value="kriya">🛠️ Kriya (Kerajinan Tangan, Tembikar, Perhiasan, Lilin, dll)</option>
               </select>
             </div>
 
@@ -235,7 +235,7 @@ export default function RegisterPage() {
                 required
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ceritakan singkat usaha Anda (contoh: Toko batik tulis otentik khas Cirebon dengan bahan primisima halus)..."
+                placeholder="Ceritakan singkat usaha Anda (contoh: Usaha lilin aromaterapi lavender buatan tangan dari minyak kedelai alami)..."
                 className="w-full p-4 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs focus:outline-none focus:border-orange-500 transition-colors"
               />
               <p className="text-[9.5px] text-slate-500 mt-1">AI akan membaca deskripsi ini untuk membuatkan katalog 3 produk, 3 artikel jurnal, & galeri secara otomatis.</p>

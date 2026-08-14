@@ -119,17 +119,17 @@ export default function ClientHomeWrapper({ store, products, gallery }) {
           <div>
             <h2 className="font-serif text-3xl sm:text-4xl font-bold text-slate-800 dark:text-white">
               {store.category === 'fashion'
-                ? 'Koleksi Busana Pilihan'
+                ? 'Koleksi Produk Fashion Pilihan'
                 : store.category === 'kriya'
-                ? 'Katalog Kerajinan Rotan Estetik'
-                : 'Menu Unggulan Resto'}
+                ? 'Katalog Karya Kriya Estetik'
+                : 'Katalog Kuliner Spesial'}
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
               {store.category === 'fashion'
-                ? 'Koleksi batik khas Trusmi Cirebon buatan pengrajin lokal.'
+                ? 'Koleksi produk fashion eksklusif berkualitas buatan perajin lokal.'
                 : store.category === 'kriya'
-                ? 'Hasil karya kerajinan rotan estetik kualitas ekspor.'
-                : 'Cita rasa hidangan khas racikan resep asli kami.'}
+                ? 'Hasil karya kriya & kerajinan tangan estetik berkualitas tinggi.'
+                : 'Cita rasa hidangan & olahan kuliner khas racikan resep asli kami.'}
             </p>
           </div>
           <a
@@ -213,9 +213,9 @@ export default function ClientHomeWrapper({ store, products, gallery }) {
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
               {store.category === 'fashion'
-                ? 'Mengintip karya busana dan proses kreasi batik kami.'
+                ? 'Mengintip produk fashion dan proses kreasi studio kami.'
                 : store.category === 'kriya'
-                ? 'Mengintip proses ukir dan anyaman workshop rotan kami.'
+                ? 'Mengintip proses kreasi dan kerajinan buatan tangan workshop kami.'
                 : 'Mengintip kesibukan dapur dan keceriaan tempat kami.'}
             </p>
           </div>

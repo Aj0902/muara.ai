@@ -484,10 +484,10 @@ export default function StorefrontCartProvider({ children, store }) {
       sender: 'ai',
       text:
         (store.category || 'kuliner').toLowerCase() === 'fashion'
-          ? `Mantap! 👗 Pakaian "${product.name}${detailText}" berhasil dimasukkan ke keranjang. Silakan isi alamat pengiriman di bawah untuk checkout.`
+          ? `Mantap! 🛍️ Produk fashion "${product.name}${detailText}" berhasil dimasukkan ke keranjang. Silakan isi alamat pengiriman di bawah untuk checkout.`
           : (store.category || 'kuliner').toLowerCase() === 'kriya'
-          ? `Mantap! 🛠️ Kerajinan rotan "${product.name}" berhasil dimasukkan ke keranjang. Silakan isi detail spesifikasi di bawah untuk checkout.`
-          : `Mantap! 🍽️ Menu "${product.name}" berhasil dimasukkan ke keranjang. Silakan pilih meja atau takeaway di bawah untuk checkout.`
+          ? `Mantap! 🛠️ Produk kriya "${product.name}" berhasil dimasukkan ke keranjang. Silakan isi detail spesifikasi di bawah untuk checkout.`
+          : `Mantap! 🍽️ Produk "${product.name}" berhasil dimasukkan ke keranjang. Silakan pilih pengiriman, meja, atau takeaway di bawah untuk checkout.`
     };
     setCartMessages((prev) => [...prev, aiMessage]);
   };
@@ -2016,19 +2016,19 @@ export default function StorefrontCartProvider({ children, store }) {
               onClick={() =>
                 sendCSMessage(
                   (store.category || 'kuliner').toLowerCase() === 'fashion'
-                    ? '📖 Rekomendasi Busana & OOTD'
+                    ? '📖 Rekomendasi Produk Fashion'
                     : (store.category || 'kuliner').toLowerCase() === 'kriya'
-                    ? '📖 Rekomendasi Kerajinan Rotan'
-                    : '📖 Rekomendasi Menu Utama'
+                    ? '📖 Rekomendasi Karya Kriya'
+                    : '📖 Rekomendasi Produk'
                 )
               }
               className="shrink-0 text-[10px] font-semibold px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-full hover:border-orange-500/50 transition-colors"
             >
               {(store.category || 'kuliner').toLowerCase() === 'fashion'
-                ? '📖 Katalog Busana'
+                ? '📖 Katalog Fashion'
                 : (store.category || 'kuliner').toLowerCase() === 'kriya'
-                ? '📖 Katalog Rotan'
-                : '📖 Rekomendasi Menu'}
+                ? '📖 Katalog Kriya'
+                : '📖 Rekomendasi Produk'}
             </button>
             <button
               onClick={() => sendCSMessage('⏰ Jam Buka Operasional')}
