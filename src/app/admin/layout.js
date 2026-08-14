@@ -17,14 +17,14 @@ export default async function AdminLayout({ children }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-800 antialiased font-sans">
-      {/* Sidebar */}
+    <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen lg:overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased font-sans">
+      {/* Responsive Sidebar (Mobile Header + Desktop Sidebar) */}
       <Sidebar store={store} />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 w-full overflow-y-auto lg:h-full">
         {children}
-      </div>
+      </main>
     </div>
   );
 }

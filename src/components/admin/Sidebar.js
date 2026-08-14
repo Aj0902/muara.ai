@@ -10,6 +10,7 @@ export default function Sidebar({ store }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [adminDarkMode, setAdminDarkMode] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('admin_theme');
@@ -67,7 +68,7 @@ export default function Sidebar({ store }) {
       path: '/admin/pesanan',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 022 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9h4m-4 4h4m-5-4h.01M9 18h.01" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9h4m-4 4h4m-5-4h.01M9 18h.01" />
         </svg>
       )
     },
@@ -87,10 +88,10 @@ export default function Sidebar({ store }) {
     {
       name:
         store?.category === 'fashion'
-          ? 'Katalog Busana & OOTD'
+          ? 'Katalog Produk & Busana'
           : store?.category === 'kriya'
-          ? 'Katalog Kerajinan Rotan'
-          : 'Daftar Menu Makanan',
+          ? 'Katalog Produk & Kriya'
+          : 'Daftar Menu & Produk',
       path: '/admin/produk',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -122,7 +123,7 @@ export default function Sidebar({ store }) {
           ? 'Order Seragam / Grosir'
           : store?.category === 'kriya'
           ? 'Order Custom Project'
-          : 'Pesanan Katering',
+          : 'Pesanan Katering / Pre-Order',
       path: '/admin/pesanan-khusus',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -154,20 +155,27 @@ export default function Sidebar({ store }) {
     }
   ];
 
-  return (
-    <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full flex-shrink-0 transition-all duration-300">
+  const sidebarContent = (
+    <div className="flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
       {/* Logo */}
-      <div className="h-20 flex items-center px-6 border-b border-slate-100 dark:border-slate-800">
-        <Link href="/admin" className="flex items-center gap-2 text-orange-600">
+      <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100 dark:border-slate-800">
+        <Link href="/admin" onClick={() => setIsMobileOpen(false)} className="flex items-center gap-2 text-orange-600">
           <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
           <span className="text-xl font-bold tracking-tight text-slate-800 dark:text-white">AdminPanel</span>
         </Link>
+        {/* Close Button on Mobile Drawer */}
+        <button
+          onClick={() => setIsMobileOpen(false)}
+          className="lg:hidden p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl"
+        >
+          ✕
+        </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-6 px-4">
+      <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
         <ul className="space-y-1.5">
           {menuItems.map((item, idx) => {
             if (item.type === 'label') {
@@ -186,7 +194,8 @@ export default function Sidebar({ store }) {
               <li key={idx}>
                 <Link
                   href={item.path}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  onClick={() => setIsMobileOpen(false)}
+                  className={`w-full flex items-center gap-3 px-3.5 py-3 lg:py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive
                       ? 'bg-orange-50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400 font-semibold'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-white'
@@ -205,10 +214,9 @@ export default function Sidebar({ store }) {
 
       {/* User Profile Bottom */}
       <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 space-y-3">
-        {/* Dashboard theme toggle button */}
         <button
           onClick={toggleDarkMode}
-          className="w-full flex items-center justify-between px-3 py-2 bg-slate-100/70 hover:bg-slate-200/70 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-655 dark:text-slate-400 rounded-xl text-[11px] font-semibold transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between px-3.5 py-2.5 bg-slate-100/70 hover:bg-slate-200/70 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-xl text-[11px] font-semibold transition-colors cursor-pointer"
         >
           <span>Tema Kasir</span>
           <span className="font-mono text-[10px]">{adminDarkMode ? 'GELAP 🌙' : 'TERANG ☀️'}</span>
@@ -231,7 +239,7 @@ export default function Sidebar({ store }) {
           <button
             onClick={handleLogout}
             disabled={isPending}
-            className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors"
+            className="text-slate-400 hover:text-red-500 p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors"
             title="Log Out"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -240,6 +248,62 @@ export default function Sidebar({ store }) {
           </button>
         </div>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Mobile Top Header (Sticky on Mobile screens) */}
+      <header className="lg:hidden sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsMobileOpen(true)}
+            className="p-2 text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+            aria-label="Buka Menu"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-sm text-slate-800 dark:text-white truncate max-w-[150px] sm:max-w-[220px]">
+              {store?.name || 'Admin Panel'}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {store?.slug && (
+            <Link
+              href={`/toko/${store.slug}`}
+              target="_blank"
+              className="px-2.5 py-1.5 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 rounded-lg text-xs font-bold flex items-center gap-1"
+            >
+              🌐 <span className="hidden sm:inline">Lihat Web</span>
+            </Link>
+          )}
+        </div>
+      </header>
+
+      {/* Desktop Sidebar (Fixed on Desktop) */}
+      <aside className="hidden lg:flex w-64 h-full shrink-0">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Drawer (Slide in from Left) */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsMobileOpen(false)}
+          />
+          {/* Sliding Panel */}
+          <div className="relative w-72 max-w-[85vw] h-full z-10 animate-in slide-in-from-left duration-200">
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -88,7 +88,7 @@ function curateImagesForStore(category) {
   };
 }
 
-// Preset Fallback Starter Pack
+// Open Dynamic Preset Fallback Starter Pack (Broad Category Sense - Zero Narrow Keywords)
 function getCategoryPresetFallback(storeName, category, description) {
   const cat = (category || 'kuliner').toLowerCase();
   const images = curateImagesForStore(cat);
@@ -96,35 +96,35 @@ function getCategoryPresetFallback(storeName, category, description) {
   if (cat === 'fashion') {
     return {
       profile: {
-        tagline: `Koleksi Busana & Batik Elegan dari ${storeName}`,
-        story: `${storeName} hadir untuk menghadirkan busana berkualitas tinggi yang memadukan keindahan sentuhan budaya dan tren modern. Setiap helai pakaian dirancang dengan dedikasi tinggi untuk memberikan kenyamanan dan kepercayaan diri bagi Anda.`,
-        description: description || `Pusat busana dan batik eksklusif ${storeName}. Sedia beragam pakaian pria & wanita berkualitas tinggi.`,
-        address: 'Jl. Boulevard Raya No. 88, Blok F4, Jakarta Selatan',
+        tagline: `Koleksi Produk Fashion & Gaya Terkini dari ${storeName}`,
+        story: `${storeName} hadir untuk menghadirkan produk fashion dan gaya berbusana berkualitas tinggi yang memadukan estetika, kenyamanan, dan karakter unik Anda. Setiap produk dirancang dengan perhatian pada detail terbaik.`,
+        description: description || `Pusat produk fashion & gaya hidup eksklusif ${storeName}. Menyediakan ragam pilihan produk fashion berkualitas tinggi.`,
+        address: 'Jl. Boulevard Utama No. 88, Jakarta Selatan',
         hours: 'Senin - Sabtu: 09.00 - 21.00 WIB',
         instagram: `@${slugify(storeName)}_official`,
-        chatbot_name: `Asisten Busana ${storeName}`,
-        chatbot_persona: 'Asisten Customer Service yang ramah, paham panduan ukuran (size chart), dan siap merekomendasikan busana terbaik.',
+        chatbot_name: `Asisten ${storeName}`,
+        chatbot_persona: 'Asisten Customer Service yang ramah, siap merekomendasikan produk fashion terbaik dan membantu pilihan ukuran.',
         logo_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(storeName)}&background=C2410C&color=fff&size=150`
       },
       products: [
         {
-          name: `Kemeja Batik Elegan ${storeName}`,
+          name: `Koleksi Utama ${storeName}`,
           price: 245000,
-          description: 'Kemeja batik pria katun primisima premium. Adem dan jahitan rapi. Ukuran: S, M, L, XL | Warna: Navy, Black',
+          description: 'Produk fashion berkualitas tinggi dengan bahan pilihan yang nyaman digunakan harian.',
           image_url: images.productImages[0],
           status: 'tersedia'
         },
         {
-          name: `Dress Motif Modern ${storeName}`,
+          name: `Varian Spesial ${storeName}`,
           price: 320000,
-          description: 'Gaun wanita modern elegan cocok untuk acara santai maupun pesta. Ukuran: S, M, L | Warna: Maroon, Cream',
+          description: 'Desain eksklusif dengan paduan gaya modern dan daya tahan maksimal.',
           image_url: images.productImages[1],
           status: 'tersedia'
         },
         {
-          name: `Outer Premium Casual ${storeName}`,
-          price: 275000,
-          description: 'Outer serbaguna dengan bahan nyaman untuk padupadan OOTD harian Anda. Ukuran: All Size | Warna: Mocca',
+          name: `Produk Favorit ${storeName}`,
+          price: 185000,
+          description: 'Pilihan terfavorit pelanggan untuk melengkapi penampilan percaya diri Anda.',
           image_url: images.productImages[2],
           status: 'tersedia'
         }
@@ -132,33 +132,33 @@ function getCategoryPresetFallback(storeName, category, description) {
       journals: [
         {
           title: `Kisah Di Balik Peluncuran ${storeName}`,
-          content: `${storeName} didirikan dengan impian memberikan pengalaman berbusana yang memikat dan penuh gaya. Kami terus berinovasi menghasilkan karya terbaik bagi para pelanggan kami.`,
+          content: `${storeName} didirikan dengan komitmen memberikan produk fashion autentik yang memberikan kebanggaan bagi pemakainya.`,
           image_url: images.journalImages[0]
         },
         {
-          title: 'Tips Merawat Busana Agar Warna Awet',
-          content: 'Cuci pakaian dengan deterjen lembut, hindari memeras terlalu kuat, dan jemur di tempat teduh agar warna kain tetap cemerlang.',
+          title: 'Tips Perawatan Produk Agar Tetap Awet',
+          content: 'Rawat produk dengan petunjuk pembersihan yang tepat untuk menjaga daya tahan dan kilau warna alami.',
           image_url: images.journalImages[1]
         },
         {
-          title: 'Inspirasi OOTD Elegan Untuk Acara Formal',
-          content: 'Padukan outer bermotif dengan celana bahan netral untuk memberikan kesan profesional sekaligus modis.',
+          title: 'Inspirasi Gaya dan Padu Padan Harian',
+          content: 'Temukan kombinasi gaya unik yang mencerminkan karakter pribadi Anda di setiap kesempatan.',
           image_url: images.journalImages[2]
         }
       ],
       gallery: [
         {
-          caption: 'Proses Quality Control Pakaian',
+          caption: 'Detail Kualitas Produk',
           image_url: images.galleryImages[0],
           display_order: 1
         },
         {
-          caption: 'Sudut Galeri Studio Kami',
+          caption: 'Sudut Studio Karya Kami',
           image_url: images.galleryImages[1],
           display_order: 2
         },
         {
-          caption: 'Koleksi Busana Terbaru',
+          caption: 'Koleksi Terbaru',
           image_url: images.galleryImages[2],
           display_order: 3
         }
@@ -167,69 +167,69 @@ function getCategoryPresetFallback(storeName, category, description) {
   } else if (cat === 'kriya') {
     return {
       profile: {
-        tagline: `Karya Kerajinan Tangan & Rotan Seni dari ${storeName}`,
-        story: `${storeName} berdedikasi melestarikan seni kriya dan furnitur rotan buatan tangan seniman lokal. Setiap produk menggabungkan nilai estetika alami dengan daya tahan terbaik untuk mempercantik ruangan Anda.`,
-        description: description || `Pusat seni kerajinan tangan & furnitur rotan buatan seniman profesional di ${storeName}.`,
-        address: 'Jl. Craftsmen Craft No. 12, Workshop Sentra Industri, Cirebon',
+        tagline: `Karya Seni Kriya & Kerajinan Autentik dari ${storeName}`,
+        story: `${storeName} berdedikasi menciptakan karya kerajinan buatan tangan berkualitas yang menggabungkan estetika seni lokal dan fungsi praktis. Setiap karya dikerjakan dengan ketelitian jemari perajin berbakat.`,
+        description: description || `Pusat seni kriya & kerajinan buatan tangan di ${storeName}. Hadirkan sentuhan estetika istimewa untuk ruangan dan kebutuhan Anda.`,
+        address: 'Jl. Sentra Industri Kreatif No. 12, Bandung',
         hours: 'Senin - Sabtu: 08.30 - 18.00 WIB',
         instagram: `@${slugify(storeName)}_craft`,
-        chatbot_name: `Asisten Workshop ${storeName}`,
-        chatbot_persona: 'Asisten Customer Service yang mahir spesifikasi custom PO, finishing kayu/rotan, dan pengiriman aman.',
+        chatbot_name: `Asisten Karya ${storeName}`,
+        chatbot_persona: 'Asisten Customer Service yang paham spesifikasi produk kriya, pesanan custom PO, dan pengiriman aman.',
         logo_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(storeName)}&background=C2410C&color=fff&size=150`
       },
       products: [
         {
-          name: `Kursi Rotan Estetik ${storeName}`,
-          price: 480000,
-          description: 'Kursi bersantai rotan sintetis kokoh dan alami. Cocok untuk sudut teras atau ruang tamu. Ukuran: 60x65x75cm',
+          name: `Karya Kriya Utama ${storeName}`,
+          price: 280000,
+          description: 'Hasil kerajinan buatan tangan dengan bahan berkualitas dan finishing presisi.',
           image_url: images.productImages[0],
           status: 'tersedia'
         },
         {
-          name: `Keranjang Anyaman Dekoratif ${storeName}`,
-          price: 135000,
-          description: 'Keranjang serbaguna dari bahan serat alami untuk wadah tanaman atau tempat penyimpanan. Diameter: 30cm',
+          name: `Kerajinan Estetik ${storeName}`,
+          price: 150000,
+          description: 'Ornamen dekoratif unik untuk menambah kehangatan dan keindahan sudut ruangan.',
           image_url: images.productImages[1],
           status: 'tersedia'
         },
         {
-          name: `Hiasan Dinding Kayu Ukir ${storeName}`,
-          price: 220000,
-          description: 'Ornamen dinding ukiran artistik kayu jati asli dengan finishing natural smooth.',
+          name: `Karya Custom ${storeName}`,
+          price: 350000,
+          description: 'Hasil karya kriya edisi khusus yang dirancang sesuai keinginan dan kebutuhan Anda.',
           image_url: images.productImages[2],
           status: 'tersedia'
         }
       ],
       journals: [
         {
-          title: `Seni Menganyam Rotan di ${storeName}`,
-          content: 'Menganyam rotan adalah perpaduan ketelitian jemari dan jiwa seni. Setiap pola anyaman menceritakan dedikasi para perajin kami.',
+          title: `Filosofi Pembuatan Karya di ${storeName}`,
+          content: 'Setiap karya kriya lahir dari dedikasi dan apresiasi mendalam terhadap nilai kerajinan buatan tangan.',
           image_url: images.journalImages[0]
         },
         {
-          title: 'Merawat Furnitur Rotan Agar Tetap Mengilap',
-          content: 'Bersihkan debu dengan sikat halus secara berkala dan lap dengan kain setengah lembap untuk menjaga kelembapan alami rotan.',
+          title: 'Cara Merawat Produk Kriya dan Dekorasi',
+          content: 'Jaga kebersihan produk dengan mengelapnya secara lembut untuk mempertahankan keindahan bentuk dan warna.',
           image_url: images.journalImages[1]
         },
         {
-          title: 'Menata Ruangan Bertema Alami & Minimalis',
-          content: 'Sentuhan elemen kayu dan rotan memberikan kehangatan alami yang menenangkan di tengah suasana hunian modern.',
+          title: 'Menghadirkan Sentuhan Seni di Setiap Ruangan',
+          content: 'Sentuhan elemen kerajinan tangan memberikan nuansa hangat dan karakter yang khas pada tempat tinggal Anda.',
           image_url: images.journalImages[2]
         }
       ],
       gallery: [
         {
-          caption: 'Proses Finishing Anyaman Rotan',
+          caption: 'Proses Pembuatan Karya',
           image_url: images.galleryImages[0],
           display_order: 1
         },
         {
-          caption: 'Sudut Workshop Kerajinan',
+          caption: 'Sudut Workshop Perajin',
           image_url: images.galleryImages[1],
           display_order: 2
         },
         {
-          caption: 'Hasil Karya Kriya Terpilih',
+          caption: 'Koleksi Hasil Karya',
           image_url: images.galleryImages[2],
           display_order: 3
         }
@@ -239,69 +239,69 @@ function getCategoryPresetFallback(storeName, category, description) {
     // Kuliner
     return {
       profile: {
-        tagline: `Cita Rasa Kuliner Dapur Spesial dari ${storeName}`,
-        story: `${storeName} menyajikan racikan hidangan lezat yang disiapkan dari bahan-bahan segar berkualitas dan resep rahasia keluarga. Kami menghadirkan kenikmatan bersantap istimewa untuk setiap momen istimewa Anda.`,
-        description: description || `Destinasi kuliner lezat & segar ${storeName}. Menyediakan hidangan istimewa makan di tempat & takeaway.`,
-        address: 'Jl. Culinary Food Market No. 99, Bandung',
-        hours: 'Setiap Hari: 10.00 - 22.00 WIB',
+        tagline: `Cita Rasa Kuliner Spesial dari ${storeName}`,
+        story: `${storeName} menyajikan sajian kuliner lezat yang disiapkan dari bahan-bahan berkualitas dan racikan istimewa. Kami hadir untuk melengkapi momen spesial Anda dengan kenikmatan rasa yang memanjakan.`,
+        description: description || `Destinasi kuliner lezat ${storeName}. Menyediakan pilihan produk kuliner berkualitas.`,
+        address: 'Jl. Kuliner Utama No. 99, Bandung',
+        hours: 'Setiap Hari: 09.00 - 21.00 WIB',
         instagram: `@${slugify(storeName)}_kuliner`,
-        chatbot_name: `Asisten Dapur ${storeName}`,
-        chatbot_persona: 'Asisten Customer Service yang ramah, paham menu lezat, dan sigap membantu pemesanan tempat/takeaway.',
+        chatbot_name: `Asisten Kuliner ${storeName}`,
+        chatbot_persona: 'Asisten Customer Service yang ramah, paham varian produk kuliner, dan siap membantu pemesanan.',
         logo_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(storeName)}&background=C2410C&color=fff&size=150`
       },
       products: [
         {
-          name: `Menu Spesial Utama ${storeName}`,
+          name: `Menu/Sajian Utama ${storeName}`,
           price: 45000,
-          description: 'Sajian hidangan khas racikan chef dengan bumbu rempah segar dan aroma menggiurkan.',
+          description: 'Sajian kuliner khas racikan istimewa dengan bahan baku segar dan aroma yang menggugah selera.',
           image_url: images.productImages[0],
           status: 'tersedia'
         },
         {
-          name: `Camilan Renyah Favorit ${storeName}`,
-          price: 25000,
-          description: 'Snack goreng renyah bumbu gurih garing cocok menemani santai bersama teman.',
+          name: `Varian Spesial ${storeName}`,
+          price: 28000,
+          description: 'Pilihan favorit lezat yang cocok untuk dinikmati kapan saja bersama teman dan keluarga.',
           image_url: images.productImages[1],
           status: 'tersedia'
         },
         {
-          name: `Minuman Segar Dingin ${storeName}`,
+          name: `Minuman/Olahan Segar ${storeName}`,
           price: 18000,
-          description: 'Minuman dingin penyegar dahaga dengan perpaduan rasa buah manis dan es segar.',
+          description: 'Racikan segar penyegar hari dengan cita rasa alami khas racikan kami.',
           image_url: images.productImages[2],
           status: 'tersedia'
         }
       ],
       journals: [
         {
-          title: `Rahasia Kelezatan Dapur ${storeName}`,
-          content: 'Kami meyakini masakan yang lezat lahir dari ketulusan meracik bumbu rempah pilihan dan bahan makanan yang segar.',
+          title: `Rahasia Kelezatan di ${storeName}`,
+          content: 'Kami meyakini kelezatan rasa lahir dari bahan baku berkualitas segar dan ketulusan dalam setiap proses penyajian.',
           image_url: images.journalImages[0]
         },
         {
-          title: 'Suasana Nyaman Bersantap Bersama Keluarga',
-          content: 'Nikmati suasana bersantap yang hangat dan pelayanan terbaik dari seluruh tim kuliner kami.',
+          title: 'Komitmen Kualitas & Kesegaran Sajian',
+          content: 'Setiap produk diproses dengan standar kebersihan dan higienis tinggi untuk menjamin kepuasan Anda.',
           image_url: images.journalImages[1]
         },
         {
-          title: 'Sensasi Minuman Segar Penutup Santap Siang',
-          content: 'Segarkan harimu dengan pilihan varian racikan minuman spesial dingin dari resto kami.',
+          title: 'Menikmati Momen Bersama Sajian Spesial',
+          content: 'Sajikan momen hangat bersama keluarga dan kerabat ditemani varian rasa terbaik dari kami.',
           image_url: images.journalImages[2]
         }
       ],
       gallery: [
         {
-          caption: 'Suasana Resto & Dapur',
+          caption: 'Suasana & Penyajian Produk',
           image_url: images.galleryImages[0],
           display_order: 1
         },
         {
-          caption: 'Penyajian Makanan Segar',
+          caption: 'Proses Racikan Bahan Segar',
           image_url: images.galleryImages[1],
           display_order: 2
         },
         {
-          caption: 'Racikan Bumbu Rempah',
+          caption: 'Koleksi Sajian Favorit',
           image_url: images.galleryImages[2],
           display_order: 3
         }
@@ -324,28 +324,34 @@ async function generateCopywritingWithKIE(storeName, category, description) {
     return null;
   }
 
-  const prompt = `Anda adalah Pakar Copywriting, Branding, dan USP Analyst UMKM Indonesia Tingkat Dewa. Tugas Anda adalah membaca, menganalisis, dan mempelajari deskripsi singkat bisnis dari user, lalu meracik seluruh narasi toko yang memuat POV Story (sudut pandang cerita pendiri), keunggulan utama (USP), dan gaya copywriting yang sangat MENJUAL (high-converting) dalam format RAW JSON MURNI tanpa bungkus markdown.
+  const prompt = `Anda adalah Pakar Copywriting, Branding, dan USP Analyst UMKM Indonesia Tingkat Dewa.
+Tugas Anda adalah mengidentifikasi dan meracik narasi toko berdasarkan ide spesifik bisnis dari user dalam ARTI LUAS (Broad Category Sense) tanpa pernah terikat pada asumsi generik/terbatas.
+
+KATEGORI BISNIS DALAM ARTI LUAS:
+- **Kriya**: Bukan hanya rotan/kayu! Bisa berupa tembikar/keramik, perhiasan perak, rajutan/knitting, lilin aromaterapi, hampers buatan tangan, ukiran logam, kerajinan kulit, resin art, dll.
+- **Kuliner**: Bukan hanya makanan resto/makan di tempat! Bisa berupa katering harian, bakery/kue kering, frozen food, kopi kekinian, bumbu/sambal kemasan, jajanan pasar, minuman herbal, gelato, dll.
+- **Fashion**: Bukan hanya kemeja batik/busana pesta! Bisa berupa streetwear, busana muslim/hijab, sepatu/sandal, kaos distro, baju anak, tas kain/totebag, pakaian olahraga, aksesoris fashion, dll.
 
 INPUT DARI USER:
 - Nama Toko: "${storeName}"
-- Kategori Toko: "${category}" (fashion | kriya | kuliner)
+- Kategori Utama: "${category}" (fashion | kriya | kuliner)
 - Prompt Deskripsi Bisnis User: "${description}"
 
 MANDAT PENULISAN COPYWRITING (WAJIB PERHATIKAN):
-1. **EXTRACT POV STORY & USP DARI DESKRIPSI USER**:
-   - Pelajari ide bisnis di atas secara mendalam. JANGAN membuat teks generik/umum!
+1. **DILARANG PAKAI KATA TERIKAT/TEMPLAT KECUALI DIKetik USER**: Jangan pernah menyelipkan kata generik seperti "rotan", "batik", "kemeja", "resto", "makanan resto" KECUALI kata tersebut memang diketik user dalam prompt deskripsi!
+2. **EXTRACT POV STORY & USP DARI DESKRIPSI USER**:
    - story: Tuliskan cerita brand yang mendalam, emosional, dan inspiratif (2-3 paragraf) berdasarkan sudut pandang (POV) keunggulan khas/keunikan bisnis user.
    - tagline: Buat tagline kreatif yang sangat menjual dan mencerminkan USP utama bisnis user.
-   - description: JANGAN MENYALIN MENTAH-MENTAH ketikan user! Rakit ulang deskripsi user menjadi kalimat copywriting yang singkat, padat, jelas, profesional, dan sangat MENJUAL.
+   - description: JANGAN MENYALIN MENTAH-MENTAH ketikan user! Rakit ulang deskripsi user menjadi kalimat copywriting yang singkat, padat, jelas, profesional, dan sangat MENJUAL (high-converting).
 
-2. **PRODUK & JURNAL SPESIFIK SESUAI KONTEKS USER**:
+3. **PRODUK & JURNAL SPESIFIK SESUAI KONTEKS USER**:
    - products: Generasikan 3 nama produk yang BENAR-BENAR SPESIFIK dan RELEVAN dengan bisnis user (bukan produk umum), sertakan harga realistis dan deskripsi produk yang menggiurkan.
    - journals: Tulis 3 judul & artikel jurnal yang menceritakan filosofi produk, tips penggunaan, dan kisah pembuatan sesuai bisnis user.
    - gallery: Tulis 3 caption galeri yang menggambarkan suasana workshop/dapur/studio toko.
 
-3. **INFORMASI KONTAK DEFAULT LENGKAP & AKTIF**:
+4. **INFORMASI KONTAK DEFAULT LENGKAP & AKTIF**:
    - address: Generasikan alamat fisik toko yang lengkap dan realistis di kota Indonesia yang relevan.
-   - hours: Generasikan jam operasional spesifik (contoh: "Senin - Sabtu: 08.00 - 21.00 WIB").
+   - hours: Generasikan jam operasional spesifik yang pas dengan tipe bisnis user (contoh: "Senin - Sabtu: 08.00 - 21.00 WIB").
    - instagram: Buat handle instagram estetik (contoh: "@${slugify(storeName)}_official").
    - chatbot_name: Nama Asisten AI CS yang ramah.
    - chatbot_persona: Deskripsi karakter Asisten AI CS yang responsif.
