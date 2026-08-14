@@ -691,21 +691,67 @@ export async function bulkInsertProducts(productsArray) {
   }
 
   try {
-    const formattedProducts = productsArray.map((row) => ({
-      store_id: storeId,
-      name: row.nama || row.name || 'Produk Baru',
-      price: parseInt((row.harga || row.price || '0').replace(/[^0-9]/g, '')) || 0,
-      category: row.kategori || row.category || 'Umum',
-      description: row.deskripsi || row.description || '',
-      image_url: row.gambar_url || row.image_url || 'https://images.unsplash.com/photo-1544441893-675973e31985',
-      status: row.status || 'active'
-    }));
+    // 1. Fetch existing categories for this store
+    const { data: existingCategories } = await supabase
+      .from('categories')
+      .select('id, name')
+      .eq('store_id', storeId);
+
+    const categoryMap = new Map();
+    (existingCategories || []).forEach((c) => {
+      if (c.name) categoryMap.set(c.name.trim().toLowerCase(), c.id);
+    });
+
+    // 2. Extract unique category names from CSV
+    const csvCategoryNames = new Set();
+    productsArray.forEach((row) => {
+      const catName = (row.kategori || row.category || '').trim();
+      if (catName) csvCategoryNames.add(catName);
+    });
+
+    // 3. Auto-create missing categories in Supabase categories table
+    for (const catName of csvCategoryNames) {
+      const lower = catName.toLowerCase();
+      if (!categoryMap.has(lower)) {
+        const { data: newCat, error: catErr } = await supabase
+          .from('categories')
+          .insert({ store_id: storeId, name: catName })
+          .select('id, name')
+          .single();
+
+        if (!catErr && newCat) {
+          categoryMap.set(lower, newCat.id);
+        }
+      }
+    }
+
+    // 4. Format products matching Supabase products schema (category_id, name, price, description, image_url, status)
+    const formattedProducts = productsArray.map((row) => {
+      const rawPrice = String(row.harga || row.price || '0');
+      const cleanPrice = parseInt(rawPrice.replace(/[^0-9]/g, ''), 10) || 0;
+      const catName = (row.kategori || row.category || '').trim().toLowerCase();
+      const categoryId = categoryMap.get(catName) || null;
+
+      const rawStatus = (row.status || 'tersedia').trim().toLowerCase();
+      const validStatus = rawStatus === 'active' || rawStatus === 'tersedia' ? 'tersedia' : 'habis';
+
+      return {
+        store_id: storeId,
+        category_id: categoryId,
+        name: row.nama || row.name || 'Produk Baru',
+        price: cleanPrice,
+        description: row.deskripsi || row.description || '',
+        image_url: row.gambar_url || row.image_url || 'https://images.unsplash.com/photo-1544441893-675973e31985',
+        status: validStatus
+      };
+    });
 
     const { error } = await supabase.from('products').insert(formattedProducts);
     if (error) throw error;
 
     revalidatePath('/admin/produk');
     revalidatePath('/toko/[slug]', 'page');
+    revalidatePath('/toko/[slug]/menu', 'page');
     return { success: true, count: formattedProducts.length };
   } catch (err) {
     console.error('Bulk Insert Products Error:', err);
