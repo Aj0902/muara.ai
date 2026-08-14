@@ -24,10 +24,10 @@ export function downloadCSVTemplate(type, category = 'kuliner') {
     filename = `template_produk_${category}.csv`;
     headers = ['nama', 'harga', 'kategori', 'deskripsi', 'gambar_url', 'status'];
     sampleRow = {
-      nama: category === 'fashion' ? 'Kemeja Batik Megamendung Pria' : category === 'kriya' ? 'Kursi Rotan Santai Egg Chair' : 'Nasi Jamblang Daun Jati Special',
-      harga: category === 'fashion' ? '250000' : category === 'kriya' ? '750000' : '25000',
-      kategori: category === 'fashion' ? 'Kemeja Batik' : category === 'kriya' ? 'Furniture Rotan' : 'Makanan Utama',
-      deskripsi: category === 'fashion' ? 'Batik katun halus motif Megamendung khas Cirebon' : category === 'kriya' ? 'Anyaman rotan alami dengan kerangka kayu jati kokoh' : 'Lauk lengkap dengan paru goreng, cumi hitam, & sambal jamblang',
+      nama: category === 'fashion' ? 'Koleksi Fashion Eksklusif' : category === 'kriya' ? 'Karya Kriya Buatan Tangan' : 'Sajian Kuliner Spesial',
+      harga: category === 'fashion' ? '250000' : category === 'kriya' ? '350000' : '25000',
+      kategori: category === 'fashion' ? 'Produk Fashion' : category === 'kriya' ? 'Karya Kriya' : 'Makanan/Kuliner',
+      deskripsi: category === 'fashion' ? 'Produk fashion berkualitas tinggi dengan bahan pilihan' : category === 'kriya' ? 'Kerajinan tangan berkualitas dengan finishing presisi' : 'Sajian lezat diproses higienis dari bahan baku segar',
       gambar_url: 'https://images.unsplash.com/photo-1544441893-675973e31985',
       status: 'active'
     };

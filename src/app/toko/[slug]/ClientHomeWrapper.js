@@ -97,10 +97,10 @@ export default function ClientHomeWrapper({ store, products, gallery }) {
               <div className="lg:col-span-7 space-y-6">
                 <h2 className="font-serif text-3xl sm:text-4xl font-bold text-slate-800 dark:text-white">
                   {store.category === 'fashion'
-                    ? 'Kisah & Warisan Pengrajin'
+                    ? 'Kisah & Dedikasi Karya'
                     : store.category === 'kriya'
-                    ? 'Kisah & Seni Rotan'
-                    : 'Kisah & Warisan Rasa'}
+                    ? 'Kisah & Seni Kriya'
+                    : 'Kisah & Warisan Cita Rasa'}
                 </h2>
                 <div className="w-12 h-1 bg-orange-600 rounded"></div>
                 <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed font-light whitespace-pre-line">

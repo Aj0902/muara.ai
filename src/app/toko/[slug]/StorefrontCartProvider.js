@@ -395,12 +395,11 @@ export default function StorefrontCartProvider({ children, store }) {
     {
       id: 'greet',
       sender: 'ai',
-      text:
-        (store.category || 'kuliner').toLowerCase() === 'fashion'
-          ? `Halo Kak! 👗 Selamat datang di ${store.name}. Ada yang bisa saya bantu hari ini? Kakak bisa tanya rekomendasi busana/OOTD, size chart, atau lokasi toko.`
-          : (store.category || 'kuliner').toLowerCase() === 'kriya'
-          ? `Halo Kak! 🛠️ Selamat datang di ${store.name}. Ada yang bisa saya bantu untuk kebutuhan kerajinan rotan & perabotan Kakak hari ini?`
-          : `Halo Kak! 🍽️ Selamat datang di ${store.name}. Mau cari kuliner lezat apa nih hari ini? Ada yang bisa saya bantu?`
+      text: (store.category || 'kuliner').toLowerCase() === 'fashion'
+            ? `Halo Kak! 🛍️ Selamat datang di ${store.name}. Ada yang bisa saya bantu hari ini? Kakak bisa tanya rekomendasi produk fashion, size chart, atau lokasi toko.`
+            : (store.category || 'kuliner').toLowerCase() === 'kriya'
+            ? `Halo Kak! 🛠️ Selamat datang di ${store.name}. Ada yang bisa saya bantu untuk kebutuhan produk kriya & kerajinan Kakak hari ini?`
+            : `Halo Kak! 🍽️ Selamat datang di ${store.name}. Mau cari produk kuliner lezat apa nih hari ini? Ada yang bisa saya bantu?`
     }
   ]);
 
@@ -2162,9 +2161,9 @@ export default function StorefrontCartProvider({ children, store }) {
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 mb-1">
                     {(store.category || 'kuliner').toLowerCase() === 'fashion'
-                      ? 'RINCIAN PESANAN SERAGAM / GROSIR BATIK'
+                      ? 'RINCIAN PESANAN SERAGAM / GROSIR FASHION'
                       : (store.category || 'kuliner').toLowerCase() === 'kriya'
-                      ? 'SPESIFIKASI CUSTOM PROJECT & DIMENSI ROTAN'
+                      ? 'SPESIFIKASI CUSTOM PROJECT KRIYA'
                       : 'RINCIAN PESANAN KHUSUS (ACARA / CATERING)'}
                   </label>
                   <textarea
@@ -2173,9 +2172,9 @@ export default function StorefrontCartProvider({ children, store }) {
                     rows="4"
                     placeholder={
                       (store.category || 'kuliner').toLowerCase() === 'fashion'
-                        ? 'Tulis detail jumlah kemeja/gamis, bahan kain, ukuran S-XXL, dan tanggal pengerjaan...'
+                        ? 'Tulis detail jumlah pesanan, varian warna/ukuran, dan tanggal pengerjaan...'
                         : (store.category || 'kuliner').toLowerCase() === 'kriya'
-                        ? 'Tulis detail dimensi ukuran rotan, warna finishing, jumlah unit, dan tanggal deadline...'
+                        ? 'Tulis detail spesifikasi bahan, dimensi produk, jumlah unit, dan tanggal deadline...'
                         : 'Tulis detail pesanan katering Anda, jumlah porsi, tanggal acara, dll...'
                     }
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2.5 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:border-orange-500"
